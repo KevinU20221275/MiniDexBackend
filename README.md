@@ -107,6 +107,10 @@ Relación:\
 `Trainer (N) ---- (N) Pokemon`
 `Pokemon (N) ---- (N) PokemonType`
 
+![ENTIDAD_RELACION](./docs/entidadRelacionMiniDex.png)
+
+
+
 ------------------------------------------------------------------------
 
 
