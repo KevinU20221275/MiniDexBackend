@@ -7,11 +7,16 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,13 +26,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * Se validan los endpoints reales de registro y login usando H2 y un servidor embebido.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class AuthIntegrationTest {
 
     @LocalServerPort
     private int port;
 
     private String baseUrl;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final TestRestTemplate restTemplate = new TestRestTemplate();
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -35,6 +41,15 @@ class AuthIntegrationTest {
     @BeforeEach
     void setUp() {
         baseUrl = "http://localhost:" + port;
+
+        // Evita que RestTemplate lance excepción en errores HTTP
+        restTemplate.getRestTemplate().setErrorHandler(new DefaultResponseErrorHandler() {
+            @Override
+            public boolean hasError(ClientHttpResponse response) throws IOException {
+                // Retorna false para no lanzar excepción por 4xx/5xx
+                return false;
+            }
+        });
     }
 
     @Test
@@ -88,16 +103,11 @@ class AuthIntegrationTest {
                 "password", "pikachu123"
         );
 
-        // Se espera que lance HttpClientErrorException.Conflict (409)
-        try {
-            restTemplate.postForEntity(baseUrl + "/auth/register", request2, String.class);
-            fail("Debería lanzar HttpClientErrorException.Conflict");
-        } catch (HttpClientErrorException.Conflict ex) {
-            // Valida que sea 409
-            assertEquals(409, ex.getRawStatusCode());
-            // Valida el mensaje de error
-            assertTrue(ex.getResponseBodyAsString().contains("El nombre de usuario ya existe"));
-        }
+        // Se espera un status 409
+        ResponseEntity<String> response = restTemplate.postForEntity(baseUrl + "/auth/register", request2, String.class);
+
+        assertEquals(409, response.getStatusCodeValue());
+        assertTrue(response.getBody().contains("El nombre de usuario ya existe"));
     }
 }
 
