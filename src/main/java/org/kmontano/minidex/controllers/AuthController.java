@@ -1,13 +1,15 @@
 package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
-import org.kmontano.minidex.dto.AuthResponse;
-import org.kmontano.minidex.dto.TrainerDTO;
-import org.kmontano.minidex.dto.AuthRequest;
-import org.kmontano.minidex.dto.LoginRequest;
-import org.kmontano.minidex.models.Trainer;
-import org.kmontano.minidex.services.TrainerService;
-import org.kmontano.minidex.utils.JwtUtil;
+import org.kmontano.minidex.domain.trainer.DailyPackStatus;
+import org.kmontano.minidex.dto.response.AuthResponse;
+import org.kmontano.minidex.dto.response.TrainerDTO;
+import org.kmontano.minidex.dto.request.AuthRequest;
+import org.kmontano.minidex.dto.request.LoginRequest;
+import org.kmontano.minidex.domain.trainer.Trainer;
+import org.kmontano.minidex.application.serviceImpl.DailyPackServiceImpl;
+import org.kmontano.minidex.application.service.TrainerService;
+import org.kmontano.minidex.auth.JwtUtil;
 import org.kmontano.minidex.utils.PasswordEncoder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,10 +26,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthController {
     private final TrainerService trainerService;
     private final JwtUtil jwtUtil;
+    private final DailyPackServiceImpl dailyPackServiceImpl;
 
-    public AuthController(TrainerService trainerService, JwtUtil jwtUtil) {
+    public AuthController(TrainerService trainerService, JwtUtil jwtUtil, DailyPackServiceImpl dailyPackServiceImpl) {
         this.trainerService = trainerService;
         this.jwtUtil = jwtUtil;
+        this.dailyPackServiceImpl = dailyPackServiceImpl;
     }
 
     /**
@@ -54,7 +58,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request){
         // Obtiene el trainer con todos sus pokémon y tipos
-        Trainer trainer = trainerService.getTrainerWithPokemonsAndTypes(request.getUsername())
+        Trainer trainer = trainerService.findTrainerByUsername(request.getUsername())
                 .orElseThrow(() ->
                         new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials")
                 );
@@ -66,6 +70,10 @@ public class AuthController {
 
         // Genera token
         String token = jwtUtil.generateToken(trainer.getUsername());
+
+        // resetea los packs si es necesario
+        DailyPackStatus status = dailyPackServiceImpl.resetIfNeeded(trainer.getDailyPack());
+        trainer.setDailyPack(status);
 
         // Convierte a DTO
         TrainerDTO trainerDTO = new TrainerDTO(trainer);
