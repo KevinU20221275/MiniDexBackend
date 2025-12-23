@@ -1,18 +1,23 @@
 package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
-import org.kmontano.minidex.dto.*;
-import org.kmontano.minidex.models.Pokemon;
-import org.kmontano.minidex.models.Trainer;
-import org.kmontano.minidex.services.TrainerService;
-import org.kmontano.minidex.utils.AuthUtils;
-import org.kmontano.minidex.utils.JwtUtil;
+import org.kmontano.minidex.domain.pokedex.Pokedex;
+import org.kmontano.minidex.domain.trainer.Trainer;
+import org.kmontano.minidex.application.service.PokedexService;
+import org.kmontano.minidex.application.service.TrainerService;
+import org.kmontano.minidex.auth.AuthUtils;
+import org.kmontano.minidex.auth.JwtUtil;
+import org.kmontano.minidex.dto.request.OpenEnvelopeRequest;
+import org.kmontano.minidex.dto.request.UpdateCoinsRequest;
+import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
+import org.kmontano.minidex.dto.response.AuthResponse;
+import org.kmontano.minidex.dto.response.TrainerDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -24,10 +29,12 @@ import java.util.Optional;
 @CrossOrigin("${frontend.url}")
 public class TrainerController {
     private final TrainerService trainerService;
+    private final PokedexService pokedexService;
     private final JwtUtil jwtUtil;
 
-    public TrainerController(TrainerService trainerService, JwtUtil jwtUtil) {
+    public TrainerController(TrainerService trainerService, PokedexService pokedexService, JwtUtil jwtUtil) {
         this.trainerService = trainerService;
+        this.pokedexService = pokedexService;
         this.jwtUtil = jwtUtil;
     }
 
@@ -41,10 +48,7 @@ public class TrainerController {
     public ResponseEntity<TrainerDTO> getTrainer(Authentication authentication) {
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        return trainerService.getTrainerWithPokemonsAndTypes(trainer.getUsername())
-                .map(TrainerDTO::new)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        return ResponseEntity.ok(new TrainerDTO(trainer));
     }
 
     /**
@@ -54,10 +58,11 @@ public class TrainerController {
      * @return List<PokemonDTO>
      */
     @GetMapping("/me/pokedex")
-    public ResponseEntity<List<PokemonDTO>> getPokedex(Authentication authentication){
+    public ResponseEntity<Pokedex> getPokedex(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
-        List<PokemonDTO> pokedex = trainerService.getPokedex(trainer.getUsername());
-        return ResponseEntity.ok(pokedex);
+        Optional<Pokedex> pokedex = pokedexService.getPokedexByOwner(trainer.getUsername());
+
+        return pokedex.map(ResponseEntity::ok).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     /**
@@ -102,36 +107,10 @@ public class TrainerController {
         return ResponseEntity.ok(updatedTrainer);
     }
 
-
-    /**
-     * Endpoint que recibe un pokemon y lo agrega a la pokedex del entrenador
-     * retorna el pokemon agregado
-     *
-     * @param pokemon pokemon object
-     * @param authentication auth
-     * @return PokemonDTO
-     */
-    @PostMapping("/me/pokedex")
-    public ResponseEntity<PokemonDTO> addPokemonToPokedex(@Valid @RequestBody Pokemon pokemon, Authentication authentication){
+    @PatchMapping("/me/update/envelopes")
+    public ResponseEntity<TrainerDTO> updateEnvelopes(@Valid @RequestBody OpenEnvelopeRequest request, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
-        PokemonDTO pokemonDTO = trainerService.addPokemonToTrainer(trainer, pokemon);
 
-        return ResponseEntity.ok(pokemonDTO);
-    }
-
-    /**
-     * Endpoint que recibe el id del pokemon a eliminar de la pokedex
-     * del entrenador
-     *
-     * @param pokemonId Long
-     * @param authentication auth
-     * @return no content
-     */
-    @DeleteMapping("/me/pokedex/{pokemonId}")
-    public ResponseEntity<?> removePokemonFromPokedex(@PathVariable Long pokemonId, Authentication authentication){
-        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
-        trainerService.removePokemonFromTrainer(trainer, pokemonId);
-
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(trainerService.openEnvelope(trainer, request.getEnvelopeId()));
     }
 }
