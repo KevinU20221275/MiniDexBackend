@@ -1,13 +1,13 @@
 package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
+import org.kmontano.minidex.application.service.DailyPackService;
 import org.kmontano.minidex.domain.trainer.DailyPackStatus;
 import org.kmontano.minidex.dto.response.AuthResponse;
 import org.kmontano.minidex.dto.response.TrainerDTO;
 import org.kmontano.minidex.dto.request.AuthRequest;
 import org.kmontano.minidex.dto.request.LoginRequest;
 import org.kmontano.minidex.domain.trainer.Trainer;
-import org.kmontano.minidex.application.serviceImpl.DailyPackServiceImpl;
 import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.auth.JwtUtil;
 import org.kmontano.minidex.utils.PasswordEncoder;
@@ -26,12 +26,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthController {
     private final TrainerService trainerService;
     private final JwtUtil jwtUtil;
-    private final DailyPackServiceImpl dailyPackServiceImpl;
+    private final DailyPackService dailyPackService;
 
-    public AuthController(TrainerService trainerService, JwtUtil jwtUtil, DailyPackServiceImpl dailyPackServiceImpl) {
+    public AuthController(TrainerService trainerService, JwtUtil jwtUtil, DailyPackService dailyPackService) {
         this.trainerService = trainerService;
         this.jwtUtil = jwtUtil;
-        this.dailyPackServiceImpl = dailyPackServiceImpl;
+        this.dailyPackService = dailyPackService;
     }
 
     /**
@@ -72,7 +72,7 @@ public class AuthController {
         String token = jwtUtil.generateToken(trainer.getUsername());
 
         // resetea los packs si es necesario
-        DailyPackStatus status = dailyPackServiceImpl.resetIfNeeded(trainer.getDailyPack());
+        DailyPackStatus status = dailyPackService.resetIfNeeded(trainer.getDailyPack());
         trainer.setDailyPack(status);
 
         // Convierte a DTO
