@@ -1,10 +1,13 @@
 package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
+import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
-import org.kmontano.minidex.domain.pokemon.PackPokemon;
+import org.kmontano.minidex.domain.trainer.Envelope;
+import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
+import org.kmontano.minidex.dto.response.PokedexDTO;
 import org.kmontano.minidex.dto.response.PokemonTeamDTO;
 import org.kmontano.minidex.dto.request.PokemonTeamRequest;
 import org.kmontano.minidex.factory.PokemonFactory;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Controlador REST para gestión de Pokémons.
@@ -45,11 +49,11 @@ public class PokedexController {
      * Obtener la pokedex.
      */
     @GetMapping
-    public ResponseEntity<Pokedex> getPokedex(Authentication authentication) {
+    public ResponseEntity<PokedexDTO> getPokedex(Authentication authentication) {
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
         return pokedexService.getPokedexByOwner(trainer.getId())
-                .map(ResponseEntity::ok)
+                .map(PokedexDTO::new).map(ResponseEntity::ok)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Pokedex no encontrada"
@@ -78,13 +82,13 @@ public class PokedexController {
      * @return un Pokedex
      */
     @PutMapping
-    public ResponseEntity<Pokedex> addPokemon(@Valid @RequestBody PackPokemon pokemon, Authentication authentication) {
+    public ResponseEntity<PokedexDTO> addPokemon(@Valid @RequestBody PackPokemon pokemon, Authentication authentication) {
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
         PokemonResponse pokemonResponse = pokemonApiClient.getPokemonByName(pokemon.getName());
         Pokemon pokemonToSave = pokemonFactory.toFullPokemon(pokemonResponse, pokemon.isShiny());
 
         return pokedexService.addPokemon(trainer.getId(), pokemonToSave)
-                .map(ResponseEntity::ok)
+                .map(PokedexDTO::new).map(ResponseEntity::ok)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Fallo al agregar el pokemon"
@@ -93,11 +97,11 @@ public class PokedexController {
     }
 
     @PatchMapping("/evolve/{pokemonId}")
-    public ResponseEntity<Pokedex> evolPokemon(@PathVariable String pokemonId, Authentication authentication){
+    public ResponseEntity<PokedexDTO> evolPokemon(@PathVariable String pokemonId, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
         return pokedexService.evolPokemon(trainer.getId(), pokemonId)
-                .map(ResponseEntity::ok)
+                .map(PokedexDTO::new).map(ResponseEntity::ok)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "No se encontro el pokemon"
