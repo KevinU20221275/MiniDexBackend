@@ -2,6 +2,9 @@ package org.kmontano.minidex.application.serviceImpl;
 
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
+import org.kmontano.minidex.domain.trainer.Envelope;
+import org.kmontano.minidex.domain.trainer.Trainer;
+import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.factory.PokemonFactory;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.infrastructure.repository.PokedexRepository;
@@ -9,8 +12,10 @@ import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -45,6 +50,22 @@ public class PokedexServiceImpl implements PokedexService {
             repository.save(newPokedex);
             return Optional.of(newPokedex);
         }
+    }
+
+    @Override
+    public void addPokemonsFromEnvelope(List<PackPokemon> pokemons, String ownerId) {
+        Pokedex pokedex = repository.getPokedexByOwnerId(ownerId)
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Pokedex no encontrada"
+        ));
+
+        for (int i = 0; i < pokemons.size(); i++){
+            PokemonResponse p = pokemonApiClient.getPokemonByName(pokemons.get(i).getName());
+            Pokemon pokemon = pokemonFactory.toFullPokemon(p, pokemons.get(i).isShiny());
+            pokedex.getPokemons().add(pokemon);
+        }
+
+        repository.save(pokedex);
     }
 
     @Override
