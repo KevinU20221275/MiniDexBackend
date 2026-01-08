@@ -1,6 +1,6 @@
 package org.kmontano.minidex.factory;
 
-import org.kmontano.minidex.domain.pokemon.PackPokemon;
+import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.utils.PokemonUtils;
 import org.springframework.stereotype.Component;
