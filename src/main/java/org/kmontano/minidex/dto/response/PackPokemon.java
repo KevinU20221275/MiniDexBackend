@@ -1,4 +1,4 @@
-package org.kmontano.minidex.domain.pokemon;
+package org.kmontano.minidex.dto.response;
 
 public class PackPokemon {
     private String name;
