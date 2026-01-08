@@ -2,6 +2,8 @@ package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
+import org.kmontano.minidex.domain.trainer.DailyPackStatus;
+import org.kmontano.minidex.domain.trainer.Envelope;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.application.service.TrainerService;
@@ -11,6 +13,7 @@ import org.kmontano.minidex.dto.request.OpenEnvelopeRequest;
 import org.kmontano.minidex.dto.request.UpdateCoinsRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
 import org.kmontano.minidex.dto.response.AuthResponse;
+import org.kmontano.minidex.dto.response.PokedexDTO;
 import org.kmontano.minidex.dto.response.TrainerDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,11 +61,11 @@ public class TrainerController {
      * @return List<PokemonDTO>
      */
     @GetMapping("/me/pokedex")
-    public ResponseEntity<Pokedex> getPokedex(Authentication authentication){
+    public ResponseEntity<PokedexDTO> getPokedex(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
         Optional<Pokedex> pokedex = pokedexService.getPokedexByOwner(trainer.getUsername());
 
-        return pokedex.map(ResponseEntity::ok).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return pokedex.map(PokedexDTO::new).map(ResponseEntity::ok).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     /**
@@ -107,8 +110,17 @@ public class TrainerController {
         return ResponseEntity.ok(updatedTrainer);
     }
 
-    @PatchMapping("/me/update/envelopes")
-    public ResponseEntity<TrainerDTO> updateEnvelopes(@Valid @RequestBody OpenEnvelopeRequest request, Authentication authentication){
+    @GetMapping("/me/envelope")
+    public ResponseEntity<DailyPackStatus> getEnvelopes(Authentication authentication){
+        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+
+        DailyPackStatus packs = trainer.getDailyPack();
+
+        return ResponseEntity.ok(packs);
+    }
+
+    @PatchMapping("/me/envelope/open")
+    public ResponseEntity<TrainerDTO> openEnnvelope(@Valid @RequestBody OpenEnvelopeRequest request, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
         return ResponseEntity.ok(trainerService.openEnvelope(trainer, request.getEnvelopeId()));
