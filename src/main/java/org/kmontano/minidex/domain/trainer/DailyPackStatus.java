@@ -1,41 +1,39 @@
 package org.kmontano.minidex.domain.trainer;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Data;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Objects;
 
+
+@Data
 public class DailyPackStatus {
-
     private Integer numEnvelopes;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate lastResetDate;
-    private List<Envelope> envelopes;
 
-    public Integer getNumEnvelopes() {
-        return numEnvelopes;
+    public DailyPackStatus() {
+        this.numEnvelopes = 3;
+        this.lastResetDate = LocalDate.now();
     }
 
-    public DailyPackStatus setNumEnvelopes(Integer numEnvelopes) {
-        this.numEnvelopes = numEnvelopes;
-        return this;
+    public void onOpenEnvelope(){
+        resetIfNeeded();
+
+        if (Objects.equals(this.numEnvelopes, 0)){
+            throw new IllegalStateException("Ya reclamaste el numero maximo de sobres");
+        }
+        this.numEnvelopes--;
     }
 
-    public LocalDate getLastResetDate() {
-        return lastResetDate;
+    public void resetIfNeeded() {
+        LocalDate today = LocalDate.now();
+
+        if (lastResetDate == null || lastResetDate.isBefore(today)) {
+            lastResetDate = today;
+            numEnvelopes = 3;
+        }
     }
 
-    public DailyPackStatus setLastResetDate(LocalDate lastResetDate) {
-        this.lastResetDate = lastResetDate;
-        return this;
-    }
-
-    public List<Envelope> getEnvelopes() {
-        return envelopes;
-    }
-
-    public DailyPackStatus setEnvelopes(List<Envelope> envelopes) {
-        this.envelopes = envelopes;
-        return this;
-    }
 }
