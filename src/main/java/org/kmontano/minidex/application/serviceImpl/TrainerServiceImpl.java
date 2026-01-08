@@ -1,5 +1,7 @@
 package org.kmontano.minidex.application.serviceImpl;
 
+import org.kmontano.minidex.application.service.DailyPackService;
+import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.trainer.DailyPackStatus;
@@ -7,12 +9,14 @@ import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.request.AuthRequest;
 import org.kmontano.minidex.dto.request.UpdateCoinsRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
+import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.TrainerDTO;
 import org.kmontano.minidex.infrastructure.repository.PokedexRepository;
 import org.kmontano.minidex.infrastructure.repository.TrainerRepository;
 import org.kmontano.minidex.utils.PasswordEncoder;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
@@ -24,13 +28,13 @@ import java.util.*;
 @Service
 public class TrainerServiceImpl implements TrainerService {
     private final TrainerRepository repository;
-    private final PokedexRepository pokedexRepository;
-    private final DailyPackServiceImpl dailyPackServiceImpl;
+    private final PokedexService pokedexService;
+    private final DailyPackService dailyPackService;
 
-    public TrainerServiceImpl(TrainerRepository repository, PokedexRepository pokedexRepository, DailyPackServiceImpl dailyPackServiceImpl) {
+    public TrainerServiceImpl(TrainerRepository repository, PokedexService pokedexService, DailyPackService dailyPackService) {
         this.repository = repository;
-        this.pokedexRepository = pokedexRepository;
-        this.dailyPackServiceImpl = dailyPackServiceImpl;
+        this.pokedexService = pokedexService;
+        this.dailyPackService = dailyPackService;
     }
 
 
@@ -43,7 +47,7 @@ public class TrainerServiceImpl implements TrainerService {
         String hashedPassword = PasswordEncoder.encodePassword(request.getPassword());
 
         Trainer newTrainer = new Trainer();
-        DailyPackStatus dailyPackStatus = dailyPackServiceImpl.initialize();
+        DailyPackStatus dailyPackStatus = dailyPackService.initialize();
 
         newTrainer.setName(request.getName())
                 .setUsername(request.getUsername())
@@ -59,7 +63,7 @@ public class TrainerServiceImpl implements TrainerService {
         // pokedex del usuario
         Pokedex pokedex = new Pokedex();
         pokedex.setOwnerId(savedTrainer.getId());
-        pokedexRepository.save(pokedex);
+        pokedexService.update(pokedex);
 
         return new TrainerDTO(newTrainer);
     }
@@ -114,8 +118,12 @@ public class TrainerServiceImpl implements TrainerService {
     }
 
     @Override
+    @Transactional
     public TrainerDTO openEnvelope(Trainer trainer, String envelopeId) {
-        trainer.openEnvelope(envelopeId);
+        List<PackPokemon> pokemons = trainer.openEnvelope(envelopeId);
+
+        pokedexService.addPokemonsFromEnvelope(pokemons, trainer.getId());
+
         return new TrainerDTO(repository.save(trainer));
     }
 }
