@@ -12,6 +12,7 @@ public class TrainerDTO {
     private String name;
     private String username;
     private Integer level;
+    private Integer xp;
     private Integer coins;
     private Integer wins;
     private Integer loses;
@@ -22,6 +23,7 @@ public class TrainerDTO {
         this.name = t.getName();
         this.username = t.getUsername();
         this.level = t.getLevel();
+        this.xp = t.getXp();
         this.coins = t.getCoins();
         this.wins = t.getWins();
         this.loses = t.getLoses();
