@@ -1,9 +1,10 @@
 package org.kmontano.minidex.application.serviceImpl;
 
 import org.kmontano.minidex.application.service.DailyPackService;
-import org.kmontano.minidex.domain.pokemon.PackPokemon;
+import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.domain.trainer.DailyPackStatus;
 import org.kmontano.minidex.domain.trainer.Envelope;
+import org.kmontano.minidex.dto.response.SpecialPokemonDTO;
 import org.kmontano.minidex.factory.PackPokemonFactory;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -39,7 +41,8 @@ public class DailyPackServiceImpl implements DailyPackService {
         return status;
     }
 
-    private List<PackPokemon> generateDailyPackPokemons(){
+    @Override
+    public List<PackPokemon> generateDailyPackPokemons(){
         List<PackPokemon> pokemons = new ArrayList<>();
 
         for (int i =0; i < TOTAL_DAILY_POKEMONS; i++){
@@ -49,12 +52,22 @@ public class DailyPackServiceImpl implements DailyPackService {
         return pokemons;
     }
 
-    private PackPokemon getRandomPackPokemon(){
+    @Override
+    public PackPokemon getRandomPackPokemon(){
         int randonId = ThreadLocalRandom.current().nextInt(1, 251);
 
         PokemonResponse response = pokeApiClient.getPokemonById(randonId);
 
         return packPokemonFactory.toPackPokemon(response, SHINY_RATE);
+    }
+
+    @Override
+    public PackPokemon getRandomPackPokemon(Double customShinyRate){
+        int randonId = ThreadLocalRandom.current().nextInt(1, 251);
+
+        PokemonResponse response = pokeApiClient.getPokemonById(randonId);
+
+        return packPokemonFactory.toPackPokemon(response, customShinyRate);
     }
 
     @Override
@@ -82,5 +95,25 @@ public class DailyPackServiceImpl implements DailyPackService {
         }
 
         return status;
+    }
+
+    @Override
+    public List<PackPokemon> getPokemonsFromBoostedPack() {
+        List<PackPokemon> pokemons = new ArrayList<>();
+
+        for (int i =0; i < 3; i++){
+            pokemons.add(getRandomPackPokemon());
+        }
+
+        return pokemons;
+    }
+
+    @Override
+    public PackPokemon generateDailySpecial(Random random) {
+        int pokedexNumber = random.nextInt(151) + 1;
+
+        PokemonResponse response = pokeApiClient.getPokemonById(pokedexNumber);
+
+        return packPokemonFactory.toPackPokemon(response, SHINY_RATE);
     }
 }
