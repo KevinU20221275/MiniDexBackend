@@ -4,12 +4,9 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import org.kmontano.minidex.dto.response.PackPokemon;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
-
-import java.util.List;
 
 /**
  * Representa a un entrenador Pokémon dentro del sistema.
@@ -60,26 +57,6 @@ public class Trainer {
 
     public String getName() {
         return name;
-    }
-
-    public List<PackPokemon> openEnvelope(String envelopeId){
-        if (this.dailyPack.getNumEnvelopes() <= 0) {
-            throw new IllegalStateException("No hay sobres disponibles");
-        }
-
-        Envelope envelope = this.dailyPack.getEnvelopes().stream()
-                .filter(e -> e.getId().equals(envelopeId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Sobre no existe"));
-
-        if (envelope.isOpened()) {
-            throw new IllegalStateException("El sobre ya fue abierto");
-        }
-
-        envelope.setOpened(true);
-        this.dailyPack.setNumEnvelopes(this.dailyPack.getNumEnvelopes() - 1);
-
-        return List.copyOf(envelope.getPokemons());
     }
 
     public Trainer setName(String name) {
