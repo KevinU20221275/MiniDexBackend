@@ -2,8 +2,6 @@ package org.kmontano.minidex.application.serviceImpl;
 
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
-import org.kmontano.minidex.domain.trainer.Envelope;
-import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.factory.PokemonFactory;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
@@ -12,7 +10,6 @@ import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
