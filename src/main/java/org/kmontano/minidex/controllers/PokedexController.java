@@ -1,9 +1,7 @@
 package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
-import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
-import org.kmontano.minidex.domain.trainer.Envelope;
 import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
@@ -24,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Controlador REST para gestión de Pokémons.
