@@ -11,12 +11,13 @@ import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.PokemonStoreDTO;
 import org.kmontano.minidex.infrastructure.repository.TrainerShopStateRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.*;
 
-
+@Service
 public class PokemonStoreServiceImpl implements PokemonStoreService {
     private final Integer PACK_PRICE = 200;
     private final Integer SPECIAL_POKEMON_PRICE = 200;
@@ -76,7 +77,7 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
 
 
     @Override
-    public TrainerShopState buySpecialPokemon(Trainer trainer) {
+    public void buySpecialPokemon(Trainer trainer) {
         if (trainer.getCoins() < SPECIAL_POKEMON_PRICE){
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No tienes monedas suficientes");
         }
@@ -95,7 +96,7 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
         trainerService.update(trainer);
 
         state.onPurchasedSpecialPokemon();
-        return repository.save(state);
+        repository.save(state);
     }
 
     private TrainerShopState getOrCreateState(String trainerId){
