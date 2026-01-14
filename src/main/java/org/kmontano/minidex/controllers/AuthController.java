@@ -1,8 +1,6 @@
 package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
-import org.kmontano.minidex.application.service.DailyPackService;
-import org.kmontano.minidex.domain.trainer.DailyPackStatus;
 import org.kmontano.minidex.dto.response.AuthResponse;
 import org.kmontano.minidex.dto.response.TrainerDTO;
 import org.kmontano.minidex.dto.request.AuthRequest;
@@ -26,12 +24,10 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthController {
     private final TrainerService trainerService;
     private final JwtUtil jwtUtil;
-    private final DailyPackService dailyPackService;
 
-    public AuthController(TrainerService trainerService, JwtUtil jwtUtil, DailyPackService dailyPackService) {
+    public AuthController(TrainerService trainerService, JwtUtil jwtUtil) {
         this.trainerService = trainerService;
         this.jwtUtil = jwtUtil;
-        this.dailyPackService = dailyPackService;
     }
 
     /**
@@ -70,10 +66,6 @@ public class AuthController {
 
         // Genera token
         String token = jwtUtil.generateToken(trainer.getUsername());
-
-        // resetea los packs si es necesario
-        DailyPackStatus status = dailyPackService.resetIfNeeded(trainer.getDailyPack());
-        trainer.setDailyPack(status);
 
         // Convierte a DTO
         TrainerDTO trainerDTO = new TrainerDTO(trainer);
