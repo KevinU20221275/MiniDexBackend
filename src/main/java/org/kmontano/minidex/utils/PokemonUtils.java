@@ -1,7 +1,7 @@
 package org.kmontano.minidex.utils;
 
-import org.kmontano.minidex.domain.pokemon.Pokemon;
-import org.kmontano.minidex.domain.pokemon.Stats;
+import org.kmontano.minidex.application.service.PokemonTypeCacheService;
+import org.kmontano.minidex.domain.pokemon.*;
 import org.kmontano.minidex.dto.shared.BattlePokemon;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.infrastructure.mapper.StatSlot;
@@ -48,16 +48,49 @@ public class PokemonUtils {
         return Math.random() < shinyChance;
     }
 
-    public String selectImage(PokemonResponse data, boolean isShiny) {
-        var home = data.getSprites()
-                .getOther()
-                .getHome();
+    public String selectImage(PokemonResponse data, boolean isShiny){
+        var home = data.getSprites().getOther().getHome();
 
         if (home == null) return null;
 
-        return isShiny
-                ? home.getFrontShiny()
-                : home.getFrontDefault();
+        return isShiny ? home.getFrontShiny() : home.getFrontDefault();
+    }
+
+    public Sprites selectSprites(PokemonResponse data, boolean isShiny) {
+        if (data == null || data.getSprites() == null) return null;
+
+        var other = data.getSprites().getOther();
+        if (other == null) return null;
+
+        var home = other.getHome();
+        var showdown = other.getShowdown();
+
+
+        Sprites sprites = new Sprites();
+
+        if (isShiny) {
+            sprites.setSmallImage(
+                    home != null ? home.getFrontShiny() : null
+            );
+            sprites.setFrontMainImage(
+                    showdown != null ? showdown.getFrontShiny() : null
+            );
+            sprites.setBackMainImage(
+                    showdown != null ? showdown.getBackShiny() : null
+            );
+        } else {
+            sprites.setSmallImage(
+                    home != null ? home.getFrontDefault() : null
+            );
+            sprites.setFrontMainImage(
+                    showdown != null ? showdown.getFrontDefault() : null
+            );
+            sprites.setBackMainImage(
+                    showdown != null ? showdown.getBackDefault() : null
+            );
+        }
+
+        return sprites;
     }
 
     public List<BattlePokemon> toBattleTeam(List<Pokemon> team){
