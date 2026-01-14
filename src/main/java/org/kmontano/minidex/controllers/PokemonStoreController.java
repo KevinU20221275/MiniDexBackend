@@ -3,6 +3,7 @@ package org.kmontano.minidex.controllers;
 import org.kmontano.minidex.application.service.PokemonStoreService;
 import org.kmontano.minidex.auth.AuthUtils;
 import org.kmontano.minidex.domain.trainer.Trainer;
+import org.kmontano.minidex.dto.response.BuyBoosterResponseDTO;
 import org.kmontano.minidex.dto.response.PokemonStoreDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/shop")
 @CrossOrigin("${frontend.url}")
 public class PokemonStoreController {
-    private PokemonStoreService pokemonStoreService;
+    private final PokemonStoreService pokemonStoreService;
 
     public PokemonStoreController(PokemonStoreService pokemonStoreService) {
         this.pokemonStoreService = pokemonStoreService;
@@ -36,11 +37,9 @@ public class PokemonStoreController {
     }
 
     @PatchMapping("/buyEnvelope")
-    ResponseEntity<Void> buyEnvelope(Authentication authentication){
+    ResponseEntity<BuyBoosterResponseDTO> buyEnvelope(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        pokemonStoreService.buyBooster(trainer);
-
-        return new ResponseEntity<>(HttpStatus.OK);
+        return ResponseEntity.ok(pokemonStoreService.buyBooster(trainer));
     }
 }
