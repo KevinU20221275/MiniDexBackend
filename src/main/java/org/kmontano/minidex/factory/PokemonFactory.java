@@ -1,14 +1,13 @@
 package org.kmontano.minidex.factory;
 
-import org.kmontano.minidex.domain.pokemon.PokemonType;
-import org.kmontano.minidex.domain.pokemon.Move;
-import org.kmontano.minidex.domain.pokemon.Pokemon;
-import org.kmontano.minidex.domain.pokemon.Stats;
+import org.kmontano.minidex.application.service.PokemonTypeCacheService;
+import org.kmontano.minidex.domain.pokemon.*;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.application.service.EvolutionService;
 import org.kmontano.minidex.utils.PokemonUtils;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,11 +16,13 @@ public class PokemonFactory {
     private final PokemonUtils utils;
     private final MoveFactory moveFactory;
     private final EvolutionService evolutionService;
+    private final PokemonTypeCacheService typeCacheService;
 
-    public PokemonFactory(PokemonUtils utils, MoveFactory moveFactory, EvolutionService evolutionService){
+    public PokemonFactory(PokemonUtils utils, MoveFactory moveFactory, EvolutionService evolutionService, PokemonTypeCacheService typeCacheService){
         this.utils = utils;
         this.moveFactory = moveFactory;
         this.evolutionService = evolutionService;
+        this.typeCacheService = typeCacheService;
     }
 
     public Pokemon toFullPokemon(PokemonResponse data, boolean isShiny){
@@ -39,17 +40,34 @@ public class PokemonFactory {
                 .setNumPokedex(data.getId())
                 .setLevel(1)
                 .setShiny(isShiny)
-                .setImage(utils.selectImage(data, isShiny))
+                .setSprites(utils.selectSprites(data, isShiny))
                 .setCanEvolve(canEvolve)
                 .setNextEvolution(nextEvolution.orElse(null))
                 .setStats(stats)
                 .setMoves(moves)
-                .setTypes(data.getTypes()
-                        .stream()
-                        .map(t -> PokemonType.fromApiName(t.getType().getName()))
-                        .toList()
-                );
+                .setTypes(getTypesWithIcon(data));
 
         return p;
+    }
+
+    public List<PokemonTypeRef> getTypesWithIcon(PokemonResponse data) {
+
+        List<PokemonTypeRef> types = new ArrayList<>();
+
+        for (var t : data.getTypes()) {
+
+            PokemonTypeCache cache =
+                    typeCacheService.getType(
+                            t.getType().getUrl()
+                    );
+
+            PokemonTypeRef ref = new PokemonTypeRef();
+            ref.setName(cache.getName());
+            ref.setIconUrl(cache.getIconUrl());
+
+            types.add(ref);
+        }
+
+        return types;
     }
 }
