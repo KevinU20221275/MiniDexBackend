@@ -2,15 +2,11 @@ package org.kmontano.minidex.application.serviceImpl;
 
 import org.kmontano.minidex.application.service.DailyPackService;
 import org.kmontano.minidex.dto.response.PackPokemon;
-import org.kmontano.minidex.domain.trainer.DailyPackStatus;
-import org.kmontano.minidex.domain.trainer.Envelope;
-import org.kmontano.minidex.dto.response.SpecialPokemonDTO;
 import org.kmontano.minidex.factory.PackPokemonFactory;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -18,9 +14,10 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class DailyPackServiceImpl implements DailyPackService {
-    private static final int TOTAL_DAILY_POKEMONS = 9;
+    private static final int TOTAL_DAILY_POKEMONS_IN_PACK = 3;
     private static final int MAX_ENABLE_ENVELOPES = 3;
     private static final float SHINY_RATE = 0.05f;
+    private static final double SHINY_RATE_IN_BOOSTER_PACK = 0.15f;
 
     private final PokemonApiClient pokeApiClient;
     private final PackPokemonFactory packPokemonFactory;
@@ -31,21 +28,10 @@ public class DailyPackServiceImpl implements DailyPackService {
     }
 
     @Override
-    public DailyPackStatus initialize() {
-
-        DailyPackStatus status = new DailyPackStatus();
-        status.setNumEnvelopes(MAX_ENABLE_ENVELOPES);
-        status.setLastResetDate(LocalDate.now());
-        status.setEnvelopes(buildEnvelopes(generateDailyPackPokemons()));
-
-        return status;
-    }
-
-    @Override
     public List<PackPokemon> generateDailyPackPokemons(){
         List<PackPokemon> pokemons = new ArrayList<>();
 
-        for (int i =0; i < TOTAL_DAILY_POKEMONS; i++){
+        for (int i =0; i < TOTAL_DAILY_POKEMONS_IN_PACK; i++){
             pokemons.add(getRandomPackPokemon());
         }
 
@@ -70,39 +56,13 @@ public class DailyPackServiceImpl implements DailyPackService {
         return packPokemonFactory.toPackPokemon(response, customShinyRate);
     }
 
-    @Override
-    public List<Envelope> buildEnvelopes(List<PackPokemon> pokemons){
-        List<Envelope> envelopes = new ArrayList<>();
-
-        for (int i = 0; i < MAX_ENABLE_ENVELOPES; i++){
-            envelopes.add(new Envelope()
-                    .setId("slot_"+(i+1))
-                    .setOpened(false)
-                    .setPokemons(pokemons.subList(i * 3, (i + 1) * 3)));
-        }
-
-        return envelopes;
-    }
-
-    @Override
-    public DailyPackStatus resetIfNeeded(DailyPackStatus status){
-        LocalDate today = LocalDate.now();
-
-        if (status.getLastResetDate() == null || status.getLastResetDate().isBefore(today)) {
-            status.setLastResetDate(today);
-            status.setNumEnvelopes(3);
-            status.setEnvelopes(buildEnvelopes(generateDailyPackPokemons()));
-        }
-
-        return status;
-    }
 
     @Override
     public List<PackPokemon> getPokemonsFromBoostedPack() {
         List<PackPokemon> pokemons = new ArrayList<>();
 
         for (int i =0; i < 3; i++){
-            pokemons.add(getRandomPackPokemon());
+            pokemons.add(getRandomPackPokemon(SHINY_RATE_IN_BOOSTER_PACK));
         }
 
         return pokemons;
