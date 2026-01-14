@@ -5,4 +5,5 @@ import lombok.Data;
 @Data
 public class Other {
     private Home home;
+    private Showdown showdown;
 }
