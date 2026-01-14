@@ -11,7 +11,6 @@ import org.kmontano.minidex.dto.request.UpdateCoinsRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
 import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.TrainerDTO;
-import org.kmontano.minidex.infrastructure.repository.PokedexRepository;
 import org.kmontano.minidex.infrastructure.repository.TrainerRepository;
 import org.kmontano.minidex.utils.PasswordEncoder;
 import org.springframework.http.HttpStatus;
@@ -47,7 +46,7 @@ public class TrainerServiceImpl implements TrainerService {
         String hashedPassword = PasswordEncoder.encodePassword(request.getPassword());
 
         Trainer newTrainer = new Trainer();
-        DailyPackStatus dailyPackStatus = dailyPackService.initialize();
+        DailyPackStatus dailyPackStatus = new DailyPackStatus();
 
         newTrainer.setName(request.getName())
                 .setUsername(request.getUsername())
@@ -119,11 +118,14 @@ public class TrainerServiceImpl implements TrainerService {
 
     @Override
     @Transactional
-    public TrainerDTO openEnvelope(Trainer trainer, String envelopeId) {
-        List<PackPokemon> pokemons = trainer.openEnvelope(envelopeId);
+    public List<PackPokemon> openEnvelope(Trainer trainer) {
+        trainer.getDailyPack().onOpenEnvelope();
+
+        List<PackPokemon> pokemons = dailyPackService.generateDailyPackPokemons();
 
         pokedexService.addPokemonsFromEnvelope(pokemons, trainer.getId());
+        repository.save(trainer);
 
-        return new TrainerDTO(repository.save(trainer));
+        return pokemons;
     }
 }
