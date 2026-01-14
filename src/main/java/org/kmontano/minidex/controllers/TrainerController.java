@@ -3,24 +3,26 @@ package org.kmontano.minidex.controllers;
 import jakarta.validation.Valid;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.trainer.DailyPackStatus;
-import org.kmontano.minidex.domain.trainer.Envelope;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.auth.AuthUtils;
 import org.kmontano.minidex.auth.JwtUtil;
-import org.kmontano.minidex.dto.request.OpenEnvelopeRequest;
 import org.kmontano.minidex.dto.request.UpdateCoinsRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
 import org.kmontano.minidex.dto.response.AuthResponse;
+import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.PokedexDTO;
 import org.kmontano.minidex.dto.response.TrainerDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -34,6 +36,7 @@ public class TrainerController {
     private final TrainerService trainerService;
     private final PokedexService pokedexService;
     private final JwtUtil jwtUtil;
+    private final Logger log = LoggerFactory.getLogger(TrainerController.class);
 
     public TrainerController(TrainerService trainerService, PokedexService pokedexService, JwtUtil jwtUtil) {
         this.trainerService = trainerService;
@@ -63,7 +66,7 @@ public class TrainerController {
     @GetMapping("/me/pokedex")
     public ResponseEntity<PokedexDTO> getPokedex(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
-        Optional<Pokedex> pokedex = pokedexService.getPokedexByOwner(trainer.getUsername());
+        Optional<Pokedex> pokedex = pokedexService.getPokedexByOwner(trainer.getId());
 
         return pokedex.map(PokedexDTO::new).map(ResponseEntity::ok).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
@@ -115,14 +118,16 @@ public class TrainerController {
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
         DailyPackStatus packs = trainer.getDailyPack();
-
+        log.info("Daily Packs ${}", packs);
+        System.out.println("packs: ");
+        System.out.println(packs);
         return ResponseEntity.ok(packs);
     }
 
     @PatchMapping("/me/envelope/open")
-    public ResponseEntity<TrainerDTO> openEnnvelope(@Valid @RequestBody OpenEnvelopeRequest request, Authentication authentication){
+    public ResponseEntity<List<PackPokemon>> openEnvelope(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        return ResponseEntity.ok(trainerService.openEnvelope(trainer, request.getEnvelopeId()));
+        return ResponseEntity.ok(trainerService.openEnvelope(trainer));
     }
 }
