@@ -11,14 +11,14 @@ public class Pokemon {
     private String uuid;
     private Integer numPokedex;
     private String name;
-    private String image;
+    private Sprites sprites;
     private Boolean shiny;
     private Integer level;
     private Boolean canEvolve;
     private String nextEvolution;
     private String speciesUrl;
     private Stats stats;
-    private List<PokemonType> types;
+    private List<PokemonTypeRef> types;
     private List<Move> moves;
 
 
@@ -27,11 +27,11 @@ public class Pokemon {
         this.uuid = UUID.randomUUID().toString();
     }
 
-    public Pokemon(Integer numPokedex, String name, String image, Boolean shiny, Integer level, Boolean canEvolve, Stats stats, List<PokemonType> types, List<Move> moves) {
+    public Pokemon(Integer numPokedex, String name, Sprites sprites, Boolean shiny, Integer level, Boolean canEvolve, Stats stats, List<PokemonTypeRef> types, List<Move> moves) {
         this.uuid = UUID.randomUUID().toString();
         this.numPokedex = numPokedex;
         this.name = name;
-        this.image = image;
+        this.sprites = sprites;
         this.shiny = shiny;
         this.level = level;
         this.canEvolve = canEvolve;
@@ -66,12 +66,12 @@ public class Pokemon {
         return this;
     }
 
-    public String getImage() {
-        return image;
+    public Sprites getSprites() {
+        return sprites;
     }
 
-    public Pokemon setImage(String image) {
-        this.image = image;
+    public Pokemon setSprites(Sprites sprites) {
+        this.sprites = sprites;
         return this;
     }
 
@@ -129,11 +129,11 @@ public class Pokemon {
         return this;
     }
 
-    public List<PokemonType> getTypes() {
+    public List<PokemonTypeRef> getTypes() {
         return types;
     }
 
-    public Pokemon setTypes(List<PokemonType> types) {
+    public Pokemon setTypes(List<PokemonTypeRef> types) {
         this.types = types;
         return this;
     }
