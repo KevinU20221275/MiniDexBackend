@@ -83,6 +83,8 @@ public class Pokedex {
     }
 
     public List<Pokemon> getPokemonTeamExpanded(){
+        if (pokemonTeam.isEmpty()) return List.of();
+
         Map<String, Pokemon> pokemonMap = pokemons.stream()
                 .collect(Collectors.toMap(Pokemon::getUuid, p -> p));
 
