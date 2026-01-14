@@ -3,7 +3,9 @@ package org.kmontano.minidex.dto.shared;
 import org.kmontano.minidex.domain.pokemon.PokemonType;
 import org.kmontano.minidex.domain.pokemon.Move;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
+import org.kmontano.minidex.domain.pokemon.PokemonTypeRef;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class BattlePokemon {
@@ -28,7 +30,7 @@ public class BattlePokemon {
         this.attack = p.getStats().getAttack();
         this.defense = p.getStats().getDefense();
         this.moves = p.getMoves();
-        this.types = p.getTypes();
+        this.types = toPokemonType(p.getTypes());
     }
 
     public boolean isFainted() {
@@ -103,7 +105,16 @@ public class BattlePokemon {
         return types;
     }
 
-    public void setTypes(List<PokemonType> types) {
-        this.types = types;
+    public void setTypes(List<PokemonTypeRef> types) {
+        this.types = toPokemonType(types);
+    }
+
+    private List<PokemonType> toPokemonType(List<PokemonTypeRef> types){
+        List<PokemonType> pokemonTypes = new ArrayList<>();
+        for (var t : types){
+            pokemonTypes.add(PokemonType.fromApiName(t.getName()));
+        }
+
+        return pokemonTypes;
     }
 }
