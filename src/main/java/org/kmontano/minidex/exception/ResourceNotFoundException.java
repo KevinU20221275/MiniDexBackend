@@ -1,4 +1,7 @@
 package org.kmontano.minidex.exception;
 
-public class ResourceNotFoundException {
+public class ResourceNotFoundException extends DomainException {
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
 }
