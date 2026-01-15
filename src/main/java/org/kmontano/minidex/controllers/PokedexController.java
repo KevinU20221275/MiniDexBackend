@@ -117,14 +117,14 @@ public class PokedexController {
      *
      * @param pokemonId       Pokémon identifier
      * @param authentication  current authentication context
-     * @return updated Pokedex
+     * @return updated Pokemon
      */
     @PatchMapping("/evolve/{pokemonId}")
-    public ResponseEntity<PokedexDTO> evolPokemon(@PathVariable String pokemonId, Authentication authentication){
+    public ResponseEntity<Pokemon> evolPokemon(@PathVariable String pokemonId, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        return pokedexService.evolPokemon(trainer.getId(), pokemonId)
-                .map(PokedexDTO::new).map(ResponseEntity::ok)
+        return pokedexService.evolPokemon(trainer, pokemonId)
+                .map(ResponseEntity::ok)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Pokemon not found"
