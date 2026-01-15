@@ -8,7 +8,6 @@ import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.auth.AuthUtils;
 import org.kmontano.minidex.auth.JwtUtil;
-import org.kmontano.minidex.dto.request.UpdateCoinsRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
 import org.kmontano.minidex.dto.response.AuthResponse;
 import org.kmontano.minidex.dto.response.PackPokemon;
@@ -26,8 +25,15 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Controlador REST para operaciones de Trainer.
- * Permite consultar datos del entrenador, su pokédex y actualizar información.
+ * REST controller for Trainer-related operations.
+ *
+ * Exposes endpoints to:
+ * - Retrieve authenticated trainer data
+ * - Access trainer pokedex
+ * - Update trainer profile
+ * - Manage daily envelopes
+ *
+ * All endpoints require authentication.
  */
 @RestController
 @RequestMapping("/trainers")
@@ -45,9 +51,9 @@ public class TrainerController {
     }
 
     /**
-     * Enpoint que devuelve un entrenador con sus datos completos
+     * Returns the authenticated trainer information.
      *
-     * @param authentication auth
+     * @param authentication Spring Security authentication
      * @return TrainerDTO
      */
     @GetMapping("/me")
@@ -58,72 +64,61 @@ public class TrainerController {
     }
 
     /**
-     *  Endpoint que devuelve una lista de pokemons
+     * Returns the authenticated trainer's pokedex.
      *
-     * @param authentication auth
-     * @return List<PokemonDTO>
+     * @param authentication Spring Security authentication
+     * @return PokedexDTO
      */
     @GetMapping("/me/pokedex")
     public ResponseEntity<PokedexDTO> getPokedex(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
         Optional<Pokedex> pokedex = pokedexService.getPokedexByOwner(trainer.getId());
 
-        return pokedex.map(PokedexDTO::new).map(ResponseEntity::ok).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return pokedex.map(PokedexDTO::new).map(ResponseEntity::ok).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pokedex not found for trainer"));
     }
 
     /**
-     * Endpoint que resive una UpdateNameAndUsernameRequest
-     * con el nombre y el nombre de usuario del entrenador y los
-     * actualiza
+     * Updates the trainer's name and username.
      *
-     * retorna un TrainerDTO y un token de acceso
+     * After updating the username, a new JWT token is generated
+     * to reflect the new identity.
      *
-     * @param request name and username
-     * @param authentication auth
-     * @return AuthResponse
+     * @param request update request
+     * @param authentication Spring Security authentication
+     * @return AuthResponse containing new token and trainer data
      */
     @PutMapping("/me")
     public ResponseEntity<AuthResponse> updateNameUsername(@Valid @RequestBody UpdateNameAndUsernameRequest request, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        Optional<Trainer> trainerDB = trainerService.findTrainerByUsername(request.getUsername());
-
         TrainerDTO updatedTrainer = trainerService.updateTrainerNameAndUsername(trainer, request);
 
-        // Genera un nuevo token con el nuevo nombre de usuario
         String token = jwtUtil.generateToken(updatedTrainer.getUsername());
 
         return ResponseEntity.ok(new AuthResponse(token, updatedTrainer));
     }
 
     /**
-     * Endpoint que recibe un UpdateCoinsRequest con las monedas y
-     * la accion a realizar
-     * retorna el Trainer Actualizado
+     * Returns the current daily envelope status for the trainer.
      *
-     * @param request coins and action
-     * @param authentication auth
-     * @return TrainerDTO
+     * @param authentication Spring Security authentication
+     * @return DailyPackStatus
      */
-    @PatchMapping("/me/coins")
-    public ResponseEntity<TrainerDTO> updateTrainerCoinsAndLevel(@Valid @RequestBody UpdateCoinsRequest request, Authentication authentication){
-        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
-        TrainerDTO updatedTrainer = trainerService.updateCoinsAndLevel(trainer, request);
-
-        return ResponseEntity.ok(updatedTrainer);
-    }
-
     @GetMapping("/me/envelope")
     public ResponseEntity<DailyPackStatus> getEnvelopes(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
         DailyPackStatus packs = trainer.getDailyPack();
-        log.info("Daily Packs ${}", packs);
-        System.out.println("packs: ");
-        System.out.println(packs);
+
         return ResponseEntity.ok(packs);
     }
 
+    /**
+     * Opens the daily envelope and returns the obtained pokemons.
+     *
+     * @param authentication Spring Security authentication
+     * @return list of PackPokemon
+     */
     @PatchMapping("/me/envelope/open")
     public ResponseEntity<List<PackPokemon>> openEnvelope(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
