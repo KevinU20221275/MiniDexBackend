@@ -32,6 +32,10 @@ public class TrainerShopState {
         this.boosterPurchasedToday = 0;
     }
 
+    /**
+     * Registers the purchase of a booster pack.
+     * Throws an exception if the daily limit has been reached.
+     */
     public void purchasedBooster(){
         if (this.boosterPurchasedToday >= MAX_DAILY_PACKS){
             throw new DomainConflictException("Daily booter limit reached");
@@ -39,6 +43,10 @@ public class TrainerShopState {
         this.boosterPurchasedToday++;
     }
 
+    /**
+     * Registers the purchase of the daily special Pokémon.
+     * Throws an exception if it was already purchased.
+     */
     public void purchasedSpecialPokemon(){
         if (this.specialPokemonPurchased){
             throw new DomainConflictException("Special pokemon already purchased today");
