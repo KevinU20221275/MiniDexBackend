@@ -74,9 +74,8 @@ public class PokedexServiceImpl implements PokedexService {
             return Optional.of(pokedexToUpdate);
         }
 
-        Pokedex newPokedex = new Pokedex();
-        newPokedex.setOwnerId(owner);
-        newPokedex.getPokemons().add(pokemon);
+        Pokedex newPokedex = new Pokedex(owner);
+        newPokedex.addPokemon(pokemon);
         repository.save(newPokedex);
 
         return Optional.of(newPokedex);
@@ -100,7 +99,7 @@ public class PokedexServiceImpl implements PokedexService {
         for (int i = 0; i < pokemons.size(); i++){
             PokemonResponse p = pokemonApiClient.getPokemonByName(pokemons.get(i).getName());
             Pokemon pokemon = pokemonFactory.toFullPokemon(p, pokemons.get(i).isShiny());
-            pokedex.getPokemons().add(pokemon);
+            pokedex.addPokemon(pokemon);
         }
 
         repository.save(pokedex);
