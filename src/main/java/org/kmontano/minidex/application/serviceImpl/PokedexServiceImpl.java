@@ -3,14 +3,13 @@ package org.kmontano.minidex.application.serviceImpl;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
 import org.kmontano.minidex.dto.response.PackPokemon;
+import org.kmontano.minidex.exception.ResourceNotFoundException;
 import org.kmontano.minidex.factory.PokemonFactory;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.infrastructure.repository.PokedexRepository;
 import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -96,9 +95,7 @@ public class PokedexServiceImpl implements PokedexService {
     @Override
     public void addPokemonsFromEnvelope(List<PackPokemon> pokemons, String ownerId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(ownerId)
-                .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Pokedex not found for trainer"
-        ));
+                .orElseThrow(() -> new ResourceNotFoundException("Pokedex not found"));
 
         for (int i = 0; i < pokemons.size(); i++){
             PokemonResponse p = pokemonApiClient.getPokemonByName(pokemons.get(i).getName());
@@ -135,7 +132,7 @@ public class PokedexServiceImpl implements PokedexService {
             boolean remove = pokedexToUpdate.getPokemons().removeIf(p -> p.getUuid().equals(pokemonId));
 
             if (!remove) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "El Pokémon no está en la Pokédex del entrenador");
+                throw new ResourceNotFoundException("Pokemon is not in pokedex");
             }
 
             return Optional.of(repository.save(pokedexToUpdate));
@@ -155,16 +152,12 @@ public class PokedexServiceImpl implements PokedexService {
     @Override
     public Optional<Pokedex> evolPokemon(String owner, String pokemonId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(owner)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Pokedex no encontrada"
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException("Pokedex not found"));
 
         Pokemon oldPokemon = pokedex.getPokemons().stream()
                 .filter(p -> p.getUuid().equals(pokemonId))
                 .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Pokemon no encontrado"
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException("Pokemon not found"));
 
         PokemonResponse evolvedResponse = pokemonApiClient.getPokemonByName(oldPokemon.getName());
 
@@ -190,9 +183,7 @@ public class PokedexServiceImpl implements PokedexService {
     @Override
     public Optional<Pokedex> addPokemonToTeam(String owner, String pokemonId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(owner)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Pokedex no encontrada"
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException("Pokedex not found"));
 
         pokedex.addPokemonToTeam(pokemonId);
 
@@ -209,9 +200,7 @@ public class PokedexServiceImpl implements PokedexService {
     @Override
     public Optional<Pokedex> removePokemonFromTeam(String owner, String pokemonId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(owner)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Pokedex no encontrada"
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException("Pokedex not found"));
 
         pokedex.removePokemonFromTeam(pokemonId);
 
