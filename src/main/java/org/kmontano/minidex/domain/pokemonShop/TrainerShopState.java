@@ -2,6 +2,7 @@ package org.kmontano.minidex.domain.pokemonShop;
 
 import lombok.Data;
 import org.kmontano.minidex.dto.response.PackPokemon;
+import org.kmontano.minidex.exception.DomainConflictException;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,21 +16,37 @@ public class TrainerShopState {
     private String trainerId;
     private LocalDate shopDate;
     private boolean specialPokemonPurchased;
-    private int boosterPusrchasedToday;
+    private int boosterPurchasedToday;
 
-    public TrainerShopState(String id, String trainerId, LocalDate shopDate, boolean specialPokemonPurchased, int boosterPusrchasedToday) {
+    private static final int MAX_DAILY_PACKS = 3;
+
+    protected TrainerShopState(){
+        // For persistence
+    }
+
+    public TrainerShopState(String id, String trainerId, LocalDate shopDate, boolean specialPokemonPurchased) {
         this.id = id;
         this.trainerId = trainerId;
         this.shopDate = shopDate;
         this.specialPokemonPurchased = specialPokemonPurchased;
-        this.boosterPusrchasedToday = boosterPusrchasedToday;
+        this.boosterPurchasedToday = 0;
     }
 
-    public void onPurchasedBooster(){
-        this.boosterPusrchasedToday++;
+    public void purchasedBooster(){
+        if (this.boosterPurchasedToday >= MAX_DAILY_PACKS){
+            throw new DomainConflictException("Daily booter limit reached");
+        }
+        this.boosterPurchasedToday++;
     }
 
-    public void onPurchasedSpecialPokemon(){
+    public void purchasedSpecialPokemon(){
+        if (this.specialPokemonPurchased){
+            throw new DomainConflictException("Special pokemon already purchased today");
+        }
         this.specialPokemonPurchased = true;
+    }
+
+    public int getRemainingBoosters() {
+        return MAX_DAILY_PACKS - this.boosterPurchasedToday;
     }
 }
