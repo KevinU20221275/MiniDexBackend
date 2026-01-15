@@ -1,45 +1,55 @@
 package org.kmontano.minidex.domain.pokemon;
 
+import org.kmontano.minidex.exception.DomainConflictException;
+
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Entidad que representa un Pokémon.
- * Contiene atributos básicos como nombre, estadísticas y tipos.
- */
+
 public class Pokemon {
+
     private String uuid;
+
     private Integer numPokedex;
     private String name;
     private Sprites sprites;
     private Boolean shiny;
     private Integer level;
-    private Boolean canEvolve;
+
     private String nextEvolution;
+
+
     private String speciesUrl;
     private Stats stats;
+
+
     private List<PokemonTypeRef> types;
     private List<Move> moves;
 
+
+    private static final int MIN_LEVEL_TO_EVOLVE = 5;
+
+    private static final int MAX_LEVEL = 50;
 
 
     public Pokemon(){
         this.uuid = UUID.randomUUID().toString();
     }
 
-    public Pokemon(Integer numPokedex, String name, Sprites sprites, Boolean shiny, Integer level, Boolean canEvolve, Stats stats, List<PokemonTypeRef> types, List<Move> moves) {
+
+    public Pokemon(Integer numPokedex, String name, Sprites sprites, Boolean shiny, Integer level, Stats stats, List<PokemonTypeRef> types, List<Move> moves) {
         this.uuid = UUID.randomUUID().toString();
         this.numPokedex = numPokedex;
         this.name = name;
         this.sprites = sprites;
         this.shiny = shiny;
         this.level = level;
-        this.canEvolve = canEvolve;
         this.stats = stats;
         this.types = types;
         this.moves = moves;
     }
 
+    // Getter and Setters
     public String getUuid() {
         return uuid;
     }
@@ -80,6 +90,7 @@ public class Pokemon {
     }
 
     public Pokemon setLevel(Integer level) {
+        if (level > MAX_LEVEL) throw new DomainConflictException("the level is ");
         this.level = level;
         return this;
     }
@@ -90,15 +101,6 @@ public class Pokemon {
 
     public Pokemon setShiny(Boolean shiny) {
         this.shiny = shiny;
-        return this;
-    }
-
-    public Boolean getCanEvolve() {
-        return canEvolve;
-    }
-
-    public Pokemon setCanEvolve(Boolean canEvolve) {
-        this.canEvolve = canEvolve;
         return this;
     }
 
@@ -145,5 +147,29 @@ public class Pokemon {
     public Pokemon setMoves(List<Move> moves) {
         this.moves = moves;
         return this;
+    }
+
+
+    public void onWinLevel(){
+        if (this.level < MAX_LEVEL){
+            this.level++;
+        }
+    }
+
+
+    public void evolveTo(Pokemon evolvedData){
+        if (!canEvolve()) throw new DomainConflictException("Pokemon can't evolve");
+
+        this.name = evolvedData.getName();
+        this.numPokedex = evolvedData.getNumPokedex();
+        this.types = evolvedData.getTypes();
+        this.stats = evolvedData.getStats();
+        this.sprites = evolvedData.getSprites();
+        this.nextEvolution = evolvedData.getNextEvolution();
+    }
+
+
+    private boolean canEvolve(){
+        return this.level >= MIN_LEVEL_TO_EVOLVE && this.nextEvolution != null;
     }
 }
