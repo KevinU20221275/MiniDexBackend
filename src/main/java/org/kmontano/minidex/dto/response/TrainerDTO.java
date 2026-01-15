@@ -5,8 +5,8 @@ import org.kmontano.minidex.domain.trainer.DailyPackStatus;
 import org.kmontano.minidex.domain.trainer.Trainer;
 
 /**
- * Data Transfer Object (DTO) para exponer información del entrenador
- * sin incluir datos sensibles como la contraseña.
+ * Data Transfer Object (DTO) to expose information of trainer
+ * without include sensible data like password.
  */
 @Data
 public class TrainerDTO {
