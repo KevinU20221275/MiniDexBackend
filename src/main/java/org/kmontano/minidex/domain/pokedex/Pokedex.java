@@ -1,6 +1,8 @@
 package org.kmontano.minidex.domain.pokedex;
 
 import org.kmontano.minidex.domain.pokemon.Pokemon;
+import org.kmontano.minidex.exception.DomainConflictException;
+import org.kmontano.minidex.exception.DomainValidationException;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -18,59 +20,51 @@ public class Pokedex {
     private List<String> pokemonTeam = new ArrayList<>();
     private List<Pokemon> pokemons = new ArrayList<>();
 
-    public Pokedex() {
+    protected Pokedex() {
+        // For persistence
+    }
+
+    public Pokedex(String ownerId){
+        if (ownerId == null || ownerId.isBlank()) {
+            throw new DomainValidationException("Owner id is required");
+        }
+        this.ownerId = ownerId;
     }
 
     public String getId() {
         return id;
     }
 
-    public Pokedex setId(String id) {
-        this.id = id;
-        return this;
-    }
-
     public String getOwnerId() {
         return ownerId;
     }
 
-    public Pokedex setOwnerId(String ownerId) {
-        this.ownerId = ownerId;
-        return this;
-    }
-
     public List<String> getPokemonTeam() {
-        return pokemonTeam;
-    }
-
-    public Pokedex setPokemonTeam(List<String> pokemonTeam) {
-        this.pokemonTeam = pokemonTeam;
-        return this;
+        return List.copyOf(pokemonTeam);
     }
 
     public List<Pokemon> getPokemons() {
-        return pokemons;
+        return List.copyOf(pokemons);
     }
 
-    public Pokedex setPokemons(List<Pokemon> pokemons) {
-        this.pokemons = pokemons;
-        return this;
+    public void addPokemon(Pokemon pokemon) {
+        pokemons.add(pokemon);
     }
 
     public void addPokemonToTeam(String pokemonId){
         if (pokemonTeam.size() >= 6) {
-            throw new IllegalStateException("Team completo");
+            throw new DomainConflictException("Team is already full");
         }
 
         boolean exists = pokemons.stream()
                 .anyMatch(p -> p.getUuid().equals(pokemonId));
 
         if (!exists) {
-            throw new IllegalArgumentException("El Pokémon no está en la Pokédex");
+            throw new DomainValidationException("Pokemon is not in the Pokedex");
         }
 
         if (pokemonTeam.contains(pokemonId)) {
-            throw new IllegalStateException("El Pokémon ya está en el Team");
+            throw new DomainConflictException("Pokemon is already in the team");
         }
 
         pokemonTeam.add(pokemonId);
@@ -78,7 +72,7 @@ public class Pokedex {
 
     public void removePokemonFromTeam(String pokemonId){
         if (!pokemonTeam.remove(pokemonId)){
-            throw new IllegalStateException("El pokemon no esta en el team");
+            throw new DomainConflictException("Pokemon is not in the team");
         }
     }
 
