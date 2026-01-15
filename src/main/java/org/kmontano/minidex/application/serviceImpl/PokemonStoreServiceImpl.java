@@ -10,9 +10,8 @@ import org.kmontano.minidex.dto.response.BuyBoosterResponseDTO;
 import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.PokemonStoreDTO;
 import org.kmontano.minidex.infrastructure.repository.TrainerShopStateRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -21,7 +20,6 @@ import java.util.*;
 public class PokemonStoreServiceImpl implements PokemonStoreService {
     private final Integer PACK_PRICE = 200;
     private final Integer SPECIAL_POKEMON_PRICE = 200;
-    private final Integer MAX_DAILY_PACKS = 3;
 
     private TrainerShopStateRepository repository;
     private DailyPackService dailyPackService;
@@ -46,28 +44,21 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
                 SPECIAL_POKEMON_PRICE,
                 state.isSpecialPokemonPurchased(),
                 PACK_PRICE,
-                MAX_DAILY_PACKS - state.getBoosterPusrchasedToday()
+                state.getRemainingBoosters()
         );
     }
 
     @Override
+    @Transactional
     public BuyBoosterResponseDTO buyBooster(Trainer trainer){
         TrainerShopState state = getOrCreateState(trainer.getId());
 
-        if (state.getBoosterPusrchasedToday() >= MAX_DAILY_PACKS){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ya compraste el numero maximo de sobres, vuelve ma;ana");
-        }
-
-        if (trainer.getCoins() < PACK_PRICE){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No tienes monedas suficientes");
-        }
+        trainer.subtractCoins(PACK_PRICE);
+        state.purchasedBooster();
 
         List<PackPokemon> pokemons = dailyPackService.getPokemonsFromBoostedPack();
 
         pokedexService.addPokemonsFromEnvelope(pokemons, trainer.getId());
-
-        trainer.subtractCoins(PACK_PRICE);
-        state.onPurchasedBooster();
 
         repository.save(state);
         trainerService.update(trainer);
@@ -78,24 +69,16 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
 
     @Override
     public void buySpecialPokemon(Trainer trainer) {
-        if (trainer.getCoins() < SPECIAL_POKEMON_PRICE){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No tienes monedas suficientes");
-        }
-
         TrainerShopState state = getOrCreateState(trainer.getId());
 
-        if (state.isSpecialPokemonPurchased()){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El pokemon especial ya fue comprado");
-        }
+        trainer.subtractCoins(SPECIAL_POKEMON_PRICE);
+        state.purchasedSpecialPokemon();
 
         PackPokemon specialPokemon = dailyPackService.generateDailySpecial(getDailySpecialRandom(trainer.getId()));
 
         pokedexService.addPokemonsFromEnvelope(List.of(specialPokemon), trainer.getId());
 
-        trainer.subtractCoins(SPECIAL_POKEMON_PRICE);
         trainerService.update(trainer);
-
-        state.onPurchasedSpecialPokemon();
         repository.save(state);
     }
 
@@ -109,8 +92,7 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
                                         null,
                                         trainerId,
                                         today,
-                                        false,
-                                        0
+                                        false
                                 )
                         ));
     }
