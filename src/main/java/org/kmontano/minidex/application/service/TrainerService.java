@@ -13,13 +13,12 @@ import java.util.Optional;
 
 
 /**
- * Interfaz de servicio para manejar la lógica de negocio de Trainers.
+ * Service interface to handle business logic of Trainers.
  */
 public interface TrainerService {
     TrainerDTO create(AuthRequest request);
     Optional<Trainer> findTrainerByUsername(String username);
     Optional<Trainer> update(Trainer trainer);
     TrainerDTO updateTrainerNameAndUsername(Trainer trainer, UpdateNameAndUsernameRequest request);
-    TrainerDTO updateCoinsAndLevel(Trainer trainer, UpdateCoinsRequest request);
     List<PackPokemon> openEnvelope(Trainer trainer);
 }
