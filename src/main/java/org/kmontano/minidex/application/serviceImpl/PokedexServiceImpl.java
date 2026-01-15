@@ -15,23 +15,55 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Implementation of {@link PokedexService}.
+ *
+ * This service contains the business logic related to a trainer's Pokédex,
+ * including adding, removing, evolving Pokémon and managing the active team.
+ *
+ * This class coordinates between:
+ * - The persistence layer (PokedexRepository)
+ * - External Pokémon API access
+ * - Pokémon domain creation via factories
+ */
 @Service
 public class PokedexServiceImpl implements PokedexService {
     private final PokedexRepository repository;
     private final PokemonFactory pokemonFactory;
     private final PokemonApiClient pokemonApiClient;
 
+    /**
+     * Creates a new PokedexServiceImpl.
+     *
+     * @param repository persistence layer for Pokédex data
+     * @param pokemonFactory factory used to build Pokémon domain objects
+     * @param pokemonApiClient client used to fetch Pokémon data from external API
+     */
     public PokedexServiceImpl(PokedexRepository repository, PokemonFactory pokemonFactory, EvolutionServiceImpl evolutionService, PokemonApiClient pokemonApiClient) {
         this.repository = repository;
         this.pokemonFactory = pokemonFactory;
         this.pokemonApiClient = pokemonApiClient;
     }
 
+    /**
+     * Retrieves the Pokédex owned by a trainer.
+     *
+     * @param owner trainer identifier
+     * @return optional Pokédex
+     */
     @Override
     public Optional<Pokedex> getPokedexByOwner(String owner) {
         return repository.getPokedexByOwnerId(owner);
     }
 
+    /**
+     * Adds a single Pokémon to a trainer's Pokédex.
+     * If the Pokédex does not exist, a new one is created.
+     *
+     * @param owner trainer identifier
+     * @param pokemon Pokémon to add
+     * @return updated Pokédex
+     */
     @Override
     public Optional<Pokedex> addPokemon(String owner, Pokemon pokemon) {
         Optional<Pokedex> pokedex = getPokedexByOwner(owner);
@@ -39,21 +71,33 @@ public class PokedexServiceImpl implements PokedexService {
             Pokedex pokedexToUpdate = pokedex.get();
             pokedexToUpdate.getPokemons().add(pokemon);
             repository.save(pokedexToUpdate);
+
             return Optional.of(pokedexToUpdate);
-        } else {
-            Pokedex newPokedex = new Pokedex();
-            newPokedex.setOwnerId(owner);
-            newPokedex.getPokemons().add(pokemon);
-            repository.save(newPokedex);
-            return Optional.of(newPokedex);
         }
+
+        Pokedex newPokedex = new Pokedex();
+        newPokedex.setOwnerId(owner);
+        newPokedex.getPokemons().add(pokemon);
+        repository.save(newPokedex);
+
+        return Optional.of(newPokedex);
     }
 
+    /**
+     * Adds multiple Pokémon obtained from a daily envelope
+     * to the trainer's Pokédex.
+     *
+     * Each PackPokemon is transformed into a full Pokémon
+     * using data fetched from the external Pokémon API.
+     *
+     * @param pokemons list of Pokémon obtained from the envelope
+     * @param ownerId trainer identifier
+     */
     @Override
     public void addPokemonsFromEnvelope(List<PackPokemon> pokemons, String ownerId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(ownerId)
                 .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Pokedex no encontrada"
+                HttpStatus.NOT_FOUND, "Pokedex not found for trainer"
         ));
 
         for (int i = 0; i < pokemons.size(); i++){
@@ -65,11 +109,24 @@ public class PokedexServiceImpl implements PokedexService {
         repository.save(pokedex);
     }
 
+    /**
+     * Updates and persists a Pokédex.
+     *
+     * @param pokedex Pokédex to update
+     * @return updated Pokédex
+     */
     @Override
     public Optional<Pokedex> update(Pokedex pokedex) {
         return Optional.of(repository.save(pokedex));
     }
 
+    /**
+     * Removes a Pokémon from a trainer's Pokédex.
+     *
+     * @param owner trainer identifier
+     * @param pokemonId Pokémon unique identifier
+     * @return updated Pokédex
+     */
     @Override
     public Optional<Pokedex> removePokemon(String owner, String pokemonId) {
         Optional<Pokedex> pokedex = getPokedexByOwner(owner);
@@ -87,6 +144,14 @@ public class PokedexServiceImpl implements PokedexService {
         return Optional.empty();
     }
 
+    /**
+     * Evolves a Pokémon inside a trainer's Pokédex.
+     * The evolved Pokémon keeps the same UUID and level.
+     *
+     * @param owner trainer identifier
+     * @param pokemonId Pokémon unique identifier
+     * @return updated Pokédex
+     */
     @Override
     public Optional<Pokedex> evolPokemon(String owner, String pokemonId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(owner)
@@ -115,6 +180,13 @@ public class PokedexServiceImpl implements PokedexService {
         return Optional.of(repository.save(pokedex));
     }
 
+    /**
+     * Adds a Pokémon to the trainer's active team.
+     *
+     * @param owner trainer identifier
+     * @param pokemonId Pokémon unique identifier
+     * @return updated Pokédex
+     */
     @Override
     public Optional<Pokedex> addPokemonToTeam(String owner, String pokemonId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(owner)
@@ -127,6 +199,13 @@ public class PokedexServiceImpl implements PokedexService {
         return Optional.of(repository.save(pokedex));
     }
 
+    /**
+     * Removes a Pokémon from the trainer's active team.
+     *
+     * @param owner trainer identifier
+     * @param pokemonId Pokémon unique identifier
+     * @return updated Pokédex
+     */
     @Override
     public Optional<Pokedex> removePokemonFromTeam(String owner, String pokemonId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(owner)
