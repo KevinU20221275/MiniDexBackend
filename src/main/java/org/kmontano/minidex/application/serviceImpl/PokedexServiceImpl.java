@@ -2,14 +2,19 @@ package org.kmontano.minidex.application.serviceImpl;
 
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
+import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.response.PackPokemon;
+import org.kmontano.minidex.dto.response.PokemonDTO;
+import org.kmontano.minidex.exception.DomainConflictException;
 import org.kmontano.minidex.exception.ResourceNotFoundException;
 import org.kmontano.minidex.factory.PokemonFactory;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.infrastructure.repository.PokedexRepository;
 import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
+import org.kmontano.minidex.infrastructure.repository.TrainerRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +35,7 @@ public class PokedexServiceImpl implements PokedexService {
     private final PokedexRepository repository;
     private final PokemonFactory pokemonFactory;
     private final PokemonApiClient pokemonApiClient;
+    private final TrainerRepository trainerRepository;
 
     /**
      * Creates a new PokedexServiceImpl.
@@ -38,10 +44,11 @@ public class PokedexServiceImpl implements PokedexService {
      * @param pokemonFactory factory used to build Pokémon domain objects
      * @param pokemonApiClient client used to fetch Pokémon data from external API
      */
-    public PokedexServiceImpl(PokedexRepository repository, PokemonFactory pokemonFactory, EvolutionServiceImpl evolutionService, PokemonApiClient pokemonApiClient) {
+    public PokedexServiceImpl(PokedexRepository repository, PokemonFactory pokemonFactory, PokemonApiClient pokemonApiClient, TrainerRepository trainerRepository) {
         this.repository = repository;
         this.pokemonFactory = pokemonFactory;
         this.pokemonApiClient = pokemonApiClient;
+        this.trainerRepository = trainerRepository;
     }
 
     /**
@@ -144,32 +151,34 @@ public class PokedexServiceImpl implements PokedexService {
      * Evolves a Pokémon inside a trainer's Pokédex.
      * The evolved Pokémon keeps the same UUID and level.
      *
-     * @param owner trainer identifier
+     * @param trainer authenticate trainer owner of pokedex
      * @param pokemonId Pokémon unique identifier
      * @return updated Pokédex
      */
     @Override
-    public Optional<Pokedex> evolPokemon(String owner, String pokemonId) {
-        Pokedex pokedex = repository.getPokedexByOwnerId(owner)
+    @Transactional
+    public Optional<Pokemon> evolPokemon(Trainer trainer, String pokemonId) {
+        final int EVOLUTION_COST = 100;
+
+        Pokedex pokedex = repository.getPokedexByOwnerId(trainer.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pokedex not found"));
 
-        Pokemon oldPokemon = pokedex.getPokemons().stream()
+        Pokemon pokemonToEvol = pokedex.getPokemons().stream()
                 .filter(p -> p.getUuid().equals(pokemonId))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Pokemon not found"));
 
-        PokemonResponse evolvedResponse = pokemonApiClient.getPokemonByName(oldPokemon.getName());
+        trainer.subtractCoins(EVOLUTION_COST);
 
-        Pokemon evolvedPokemon = pokemonFactory.toFullPokemon(evolvedResponse, oldPokemon.getShiny());
+        PokemonResponse evolvedResponse = pokemonApiClient.getPokemonByName(pokemonToEvol.getNextEvolution());
 
+        Pokemon evolvedPokemon = pokemonFactory.toFullPokemon(evolvedResponse, pokemonToEvol.getShiny());
 
-        evolvedPokemon.setUuid(oldPokemon.getUuid());
-        evolvedPokemon.setLevel(oldPokemon.getLevel());
+        pokemonToEvol.evolveTo(evolvedPokemon);
 
-        pokedex.getPokemons().remove(oldPokemon);
-        pokedex.getPokemons().add(evolvedPokemon);
-
-        return Optional.of(repository.save(pokedex));
+        trainerRepository.save(trainer);
+        repository.save(pokedex);
+        return Optional.of(pokemonToEvol);
     }
 
     /**
