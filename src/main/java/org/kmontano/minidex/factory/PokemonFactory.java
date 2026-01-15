@@ -33,7 +33,6 @@ public class PokemonFactory {
                 .toList();
 
         Optional<String> nextEvolution = evolutionService.getNextEvolutionName(data.getSpecies().getUrl(), data.getName());
-        boolean canEvolve = nextEvolution.isPresent();
 
         Pokemon p = new Pokemon();
         p.setName(data.getName())
@@ -41,7 +40,6 @@ public class PokemonFactory {
                 .setLevel(1)
                 .setShiny(isShiny)
                 .setSprites(utils.selectSprites(data, isShiny))
-                .setCanEvolve(canEvolve)
                 .setNextEvolution(nextEvolution.orElse(null))
                 .setStats(stats)
                 .setMoves(moves)
