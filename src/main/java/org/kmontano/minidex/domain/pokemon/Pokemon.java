@@ -5,9 +5,17 @@ import org.kmontano.minidex.exception.DomainConflictException;
 import java.util.List;
 import java.util.UUID;
 
-
+/**
+ * Represents a Pokemon within the domain.
+ *
+ * This entity is fully decoupled from external API responses and
+ * contains only domain-specific data and behavior.
+ */
 public class Pokemon {
-
+    /**
+     * Unique identifier for this Pokemon instance.
+     * Used to distinguish Pokemons even if they share the same species.
+     */
     private String uuid;
 
     private Integer numPokedex;
@@ -16,27 +24,43 @@ public class Pokemon {
     private Boolean shiny;
     private Integer level;
 
+    /**
+     * Identifier or name of the next evolution.
+     * Null if the Pokemon cannot evolve further.
+     */
     private String nextEvolution;
 
-
+    /**
+     * Species reference URL, used to resolve evolution chains or metadata.
+     */
     private String speciesUrl;
     private Stats stats;
 
-
+    /**
+     * Pokemon types (mapped to domain-specific objects).
+     */
     private List<PokemonTypeRef> types;
     private List<Move> moves;
 
-
+    /**
+     * Minimum level required for a Pokemon to evolve.
+     */
     private static final int MIN_LEVEL_TO_EVOLVE = 5;
-
+    /**
+     * Max level
+    * */
     private static final int MAX_LEVEL = 50;
 
-
+    /**
+     * Creates a new Pokemon with a generated unique identifier.
+     */
     public Pokemon(){
         this.uuid = UUID.randomUUID().toString();
     }
 
-
+    /**
+     * Creates a fully initialized Pokemon instance.
+     */
     public Pokemon(Integer numPokedex, String name, Sprites sprites, Boolean shiny, Integer level, Stats stats, List<PokemonTypeRef> types, List<Move> moves) {
         this.uuid = UUID.randomUUID().toString();
         this.numPokedex = numPokedex;
@@ -149,14 +173,26 @@ public class Pokemon {
         return this;
     }
 
-
+    // DOMAIN LOGIC
+    /**
+     * Increases the Pokemon's level by one.
+     * This method represents winning a battle or gaining experience.
+     */
     public void onWinLevel(){
         if (this.level < MAX_LEVEL){
             this.level++;
         }
     }
 
-
+    /**
+     * Evolves the current Pokemon to its next evolution.
+     *
+     * The Pokemon keeps its identity (uuid) but updates
+     * all evolution-dependent attributes.
+     *
+     * @param evolvedData Pokemon containing the evolved form data
+     * @throws DomainConflictException if the Pokemon cannot evolve
+     */
     public void evolveTo(Pokemon evolvedData){
         if (!canEvolve()) throw new DomainConflictException("Pokemon can't evolve");
 
@@ -168,7 +204,11 @@ public class Pokemon {
         this.nextEvolution = evolvedData.getNextEvolution();
     }
 
-
+    /**
+     * Determines whether the Pokemon meets the conditions to evolve.
+     *
+     * @return true if the Pokemon can evolve, false otherwise
+     */
     private boolean canEvolve(){
         return this.level >= MIN_LEVEL_TO_EVOLVE && this.nextEvolution != null;
     }
