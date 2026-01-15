@@ -1,6 +1,7 @@
 package org.kmontano.minidex.domain.trainer;
 
 import org.kmontano.minidex.exception.DomainValidationException;
+import org.kmontano.minidex.utils.PasswordEncoder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -80,6 +81,10 @@ public class Trainer {
     public void updateNameAndUsername(String name, String username){
         this.name = name;
         this.username = username;
+    }
+
+    public boolean matchesPassword(String rawPassword, PasswordEncoder encoder) {
+        return encoder.checkPassword(rawPassword, this.password);
     }
 
     /* =========================
