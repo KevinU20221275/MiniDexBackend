@@ -13,8 +13,18 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+
     /**
-     * Maneja errores de validación de campos (@Valid)
+     * Handles validation errors triggered by @Valid annotations
+     * on request DTOs.
+     *
+     * Example response:
+     * {
+     *   "username": "Username must not be blank",
+     *   "password": "Password must be at least 6 characters"
+     * }
+     *
+     * HTTP Status: 400 Bad Request
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException ex) {
@@ -26,37 +36,94 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Maneja excepciones lanzadas con ResponseStatusException
-     * para devolver un formato consistente { "message": "..." }
+     * Handles domain-level validation errors.
+     * These exceptions represent invalid business rules
+     * or invalid domain state caused by client input.
+     *
+     * Example:
+     * - Missing required trainer fields
+     * - Invalid values (negative coins, level < 1)
+     *
+     * HTTP Status: 400 Bad Request
      */
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
+    @ExceptionHandler(DomainValidationException.class)
+    public ResponseEntity<Map<String, String>> handleDomainValidation(
+            DomainValidationException ex) {
+
         return ResponseEntity
-                .status(ex.getStatusCode())
-                .body(Map.of("message", ex.getReason() != null ? ex.getReason() : "Error"));
+                .badRequest()
+                .body(Map.of("message", ex.getMessage()));
     }
 
     /**
-     * Maneja cualquier otro error no controlado
+     * Handles domain conflicts.
+     * These occur when the current state of a resource
+     * does not allow the requested operation.
+     *
+     * Examples:
+     * - Username already exists
+     * - Daily envelope limit already reached
+     *
+     * HTTP Status: 409 Conflict
      */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleGeneralException(Exception ex) {
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("message", "Error interno del servidor"));
-    }
+    @ExceptionHandler(DomainConflictException.class)
+    public ResponseEntity<Map<String, String>> handleDomainConflict(
+            DomainConflictException ex) {
 
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleIllegalState(IllegalStateException ex) {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(ex.getMessage());
+                .body(Map.of("message", ex.getMessage()));
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException ex) {
+    /**
+     * Handles cases where a requested resource
+     * does not exist.
+     *
+     * Examples:
+     * - Trainer not found
+     * - Pokedex not found
+     *
+     * HTTP Status: 404 Not Found
+     */
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNotFound(
+            ResourceNotFoundException ex) {
+
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .body(ex.getMessage());
+                .body(Map.of("message", ex.getMessage()));
+    }
+
+    /**
+     * Handles ResponseStatusException thrown explicitly
+     * from controllers or services.
+     * Keeps a consistent error response format.
+     *
+     * HTTP Status: depends on the exception
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleResponseStatus(
+            ResponseStatusException ex) {
+
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(Map.of(
+                        "message",
+                        ex.getReason() != null ? ex.getReason() : "Error"
+                ));
+    }
+
+    /**
+     * Fallback handler for unexpected or unhandled errors.
+     * These usually represent bugs or system failures.
+     *
+     * HTTP Status: 500 Internal Server Error
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleGeneral(Exception ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Internal server error"));
     }
 }
