@@ -41,7 +41,7 @@ public class TrainerServiceImpl implements TrainerService {
         this.pokedexService = pokedexService;
         this.dailyPackService = dailyPackService;
     }
-    
+
     /**
      * Creates a new Trainer.
      *
@@ -75,8 +75,7 @@ public class TrainerServiceImpl implements TrainerService {
         Trainer savedTrainer = repository.save(newTrainer);
 
         // Initialize trainer's pokedex
-        Pokedex pokedex = new Pokedex();
-        pokedex.setOwnerId(savedTrainer.getId());
+        Pokedex pokedex = new Pokedex(savedTrainer.getId());
         pokedexService.update(pokedex);
 
         return new TrainerDTO(newTrainer);
