@@ -7,7 +7,6 @@ import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.trainer.DailyPackStatus;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.request.AuthRequest;
-import org.kmontano.minidex.dto.request.UpdateCoinsRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
 import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.TrainerDTO;
@@ -21,8 +20,15 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 
 /**
- * Implementación de TrainerService.
- * Contiene la lógica de negocio para crear, actualizar y manipular entrenadores y sus pokémons.
+ * TrainerService implementation.
+ *
+ * This service contains the core business logic related to Trainers:
+ * - Trainer creation
+ * - Trainer updates
+ * - Envelope (daily pack) handling
+ * - Coordination with Pokedex and DailyPack services
+ *
+ * It acts as the application layer between controllers and domain/repositories.
  */
 @Service
 public class TrainerServiceImpl implements TrainerService {
@@ -35,31 +41,40 @@ public class TrainerServiceImpl implements TrainerService {
         this.pokedexService = pokedexService;
         this.dailyPackService = dailyPackService;
     }
-
-
+    
+    /**
+     * Creates a new Trainer.
+     *
+     * Responsibilities:
+     * - Validate username uniqueness
+     * - Hash the password
+     * - Initialize domain defaults (daily pack status)
+     * - Persist the trainer
+     * - Create an empty Pokedex for the trainer
+     *
+     * @param request authentication and registration data
+     * @return TrainerDTO created trainer
+     */
     @Override
     public TrainerDTO create(AuthRequest request) {
         if (repository.findByUsername(request.getUsername()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El nombre de usuario ya existe");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
 
         String hashedPassword = PasswordEncoder.encodePassword(request.getPassword());
 
-        Trainer newTrainer = new Trainer();
         DailyPackStatus dailyPackStatus = new DailyPackStatus();
 
-        newTrainer.setName(request.getName())
-                .setUsername(request.getUsername())
-                .setPassword(hashedPassword)
-                .setLevel(1)
-                .setCoins(250)
-                .setWins(0)
-                .setLoses(0)
-                .setDailyPack(dailyPackStatus);
+        Trainer newTrainer = new Trainer.Builder()
+                .name(request.getName())
+                .username(request.getUsername())
+                .password(hashedPassword)
+                .dailyPack(dailyPackStatus)
+                .build();
 
         Trainer savedTrainer = repository.save(newTrainer);
 
-        // pokedex del usuario
+        // Initialize trainer's pokedex
         Pokedex pokedex = new Pokedex();
         pokedex.setOwnerId(savedTrainer.getId());
         pokedexService.update(pokedex);
@@ -67,55 +82,68 @@ public class TrainerServiceImpl implements TrainerService {
         return new TrainerDTO(newTrainer);
     }
 
+    /**
+     * Retrieves a trainer by username.
+     *
+     * @param username trainer username
+     * @return Optional Trainer
+     */
     @Override
     public Optional<Trainer> findTrainerByUsername(String username){
         return repository.findByUsername(username);
     }
 
+    /**
+     * Updates and persists a Trainer entity.
+     *
+     * @param trainer trainer to update
+     * @return updated Trainer
+     */
     @Override
     public Optional<Trainer> update(Trainer trainer) {
         return Optional.of(repository.save(trainer));
     }
 
-
+    /**
+     * Updates trainer name and username.
+     *
+     * Business rules:
+     * - Username must be unique
+     * - Trainer can only update its own data
+     *
+     * @param trainer authenticated trainer
+     * @param request new name and username
+     * @return updated TrainerDTO
+     */
     @Override
     public TrainerDTO updateTrainerNameAndUsername(Trainer trainer, UpdateNameAndUsernameRequest request){
         Optional<Trainer> existingTrainer = findTrainerByUsername(request.getUsername());
 
-        // Si el username existe y pertenece a otro usuario, lanza una excepción
+        // Username already exists and belongs to another trainer
         if (existingTrainer.isPresent() && !existingTrainer.get().getId().equals(trainer.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
 
-        trainer.setName(request.getName());
-        trainer.setUsername(request.getUsername());
+        trainer.updateNameAndUsername(request.getName(), request.getUsername());
 
         Trainer updatedTrainer = repository.save(trainer);
         return new TrainerDTO(updatedTrainer);
     }
 
-    @Override
-    public TrainerDTO updateCoinsAndLevel(Trainer trainer, UpdateCoinsRequest request) {
-        int coins = request.getCoins();
-
-        switch (request.getAction()) {
-            case "subtract" -> {
-                if (trainer.getCoins() < coins) {
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No tienes monedas suficientes");
-                }
-                trainer.setCoins(trainer.getCoins() - coins);
-            }
-            case "add" -> trainer.setCoins(trainer.getCoins() + coins);
-            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Acción no válida");
-        }
-
-        trainer.setLevel(trainer.getLevel() + 1);
-
-        Trainer updatedTrainer = repository.save(trainer);
-
-        return new TrainerDTO(updatedTrainer);
-    }
-
+    /**
+     * Opens the daily envelope for a trainer.
+     *
+     * Flow:
+     * - Validate envelope availability (domain logic)
+     * - Generate daily pack pokemons
+     * - Add pokemons to the trainer's pokedex
+     * - Persist trainer state
+     *
+     * This operation is transactional to ensure consistency.
+     *
+     * @param trainer authenticated trainer
+     * @return list of obtained PackPokemon
+     */
     @Override
     @Transactional
     public List<PackPokemon> openEnvelope(Trainer trainer) {
