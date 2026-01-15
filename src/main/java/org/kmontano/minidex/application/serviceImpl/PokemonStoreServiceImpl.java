@@ -16,15 +16,24 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.*;
 
+/**
+ * Service implementation responsible for handling the Pokémon shop logic.
+ *
+ * This service coordinates trainer coin validation, shop state rules,
+ * Pokémon generation, and persistence across multiple domains.
+ */
 @Service
 public class PokemonStoreServiceImpl implements PokemonStoreService {
+    /** Price of a standard booster pack */
     private final Integer PACK_PRICE = 200;
+
+    /** Price of the daily special Pokémon */
     private final Integer SPECIAL_POKEMON_PRICE = 200;
 
-    private TrainerShopStateRepository repository;
-    private DailyPackService dailyPackService;
-    private PokedexService pokedexService;
-    private TrainerService trainerService;
+    private final TrainerShopStateRepository repository;
+    private final DailyPackService dailyPackService;
+    private final PokedexService pokedexService;
+    private final TrainerService trainerService;
 
     public PokemonStoreServiceImpl(TrainerShopStateRepository repository, DailyPackService dailyPackService, PokedexService pokedexService, TrainerService trainerService) {
         this.repository = repository;
@@ -33,6 +42,14 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
         this.trainerService = trainerService;
     }
 
+    /**
+     * Returns the daily Pokémon store for the given trainer.
+     *
+     * The daily special Pokémon is deterministically generated per trainer and date.
+     *
+     * @param trainer authenticated trainer
+     * @return daily store DTO with prices and remaining limits
+     */
     @Override
     public PokemonStoreDTO getDailyStore(Trainer trainer){
         TrainerShopState state = getOrCreateState(trainer.getId());
@@ -48,6 +65,15 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
         );
     }
 
+    /**
+     * Purchases a booster pack for the trainer.
+     *
+     * The operation is transactional to ensure consistency between:
+     * trainer coins, shop state, and pokedex updates.
+     *
+     * @param trainer authenticated trainer
+     * @return response containing the Pokémon obtained from the booster
+     */
     @Override
     @Transactional
     public BuyBoosterResponseDTO buyBooster(Trainer trainer){
@@ -66,7 +92,11 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
         return new BuyBoosterResponseDTO(pokemons);
     }
 
-
+    /**
+     * Purchases the daily special Pokémon for the trainer.
+     *
+     * @param trainer authenticated trainer
+     */
     @Override
     public void buySpecialPokemon(Trainer trainer) {
         TrainerShopState state = getOrCreateState(trainer.getId());
@@ -82,6 +112,12 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
         repository.save(state);
     }
 
+    /**
+     * Retrieves today's shop state for the trainer or creates a new one if none exists.
+     *
+     * @param trainerId trainer identifier
+     * @return current daily shop state
+     */
     private TrainerShopState getOrCreateState(String trainerId){
         LocalDate today = LocalDate.now();
 
@@ -96,7 +132,17 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
                                 )
                         ));
     }
-
+    
+    /**
+     * Creates a deterministic random generator for the daily special Pokémon.
+     * <p>
+     * Ensures:
+     * - Same trainer gets the same Pokémon for the same day
+     * - Different trainers get different results
+     *
+     * @param trainerId trainer identifier
+     * @return seeded random instance
+     */
     private Random getDailySpecialRandom(String trainerId){
         long seed = Objects.hash(
                 trainerId,
