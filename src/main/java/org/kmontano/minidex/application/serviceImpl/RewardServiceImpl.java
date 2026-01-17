@@ -1,6 +1,6 @@
 package org.kmontano.minidex.application.serviceImpl;
 
-import org.kmontano.minidex.application.service.BattleRewardService;
+import org.kmontano.minidex.application.service.RewardService;
 import org.kmontano.minidex.domain.battle.model.BattleContext;
 import org.kmontano.minidex.domain.battle.model.BattleStatus;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
@@ -9,12 +9,12 @@ import org.kmontano.minidex.dto.shared.BattleReward;
 import org.springframework.stereotype.Service;
 
 @Service
-public class BattleRewardServiceImpl implements BattleRewardService {
+public class RewardServiceImpl implements RewardService {
     private static final int BASE_COINS = 100;
     private static final int BASE_XP = 50;
 
     @Override
-    public BattleReward calculate(BattleContext context){
+    public BattleReward calculateRewardByBattle(BattleContext context){
         int aliveTeam = (int) context.getPlayerTeam()
                 .stream()
                 .filter(p -> !p.isFainted())
@@ -29,11 +29,12 @@ public class BattleRewardServiceImpl implements BattleRewardService {
     }
 
     @Override
-    public void applyReward(Trainer trainer, BattleReward reward){
+    public void applyBattleReward(Trainer trainer, BattleReward reward){
         trainer.addCoins(reward.getCoins());
         trainer.addXp(reward.getExperience());
     }
-    
+
+
     public int calculateRewardByTransferPokemon(Pokemon pokemon){
         int base = pokemon.getRarity().getBaseCoins();
 
