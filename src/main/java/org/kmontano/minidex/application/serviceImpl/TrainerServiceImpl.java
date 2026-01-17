@@ -8,14 +8,14 @@ import org.kmontano.minidex.domain.trainer.DailyPackStatus;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.request.AuthRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
+import org.kmontano.minidex.dto.response.BoosterResponseDTO;
 import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.TrainerDTO;
+import org.kmontano.minidex.exception.DomainConflictException;
 import org.kmontano.minidex.infrastructure.repository.TrainerRepository;
-import org.kmontano.minidex.utils.PasswordEncoder;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
@@ -35,11 +35,13 @@ public class TrainerServiceImpl implements TrainerService {
     private final TrainerRepository repository;
     private final PokedexService pokedexService;
     private final DailyPackService dailyPackService;
+    private final PasswordEncoder passwordEncoder;
 
-    public TrainerServiceImpl(TrainerRepository repository, PokedexService pokedexService, DailyPackService dailyPackService) {
+    public TrainerServiceImpl(TrainerRepository repository, PokedexService pokedexService, DailyPackService dailyPackService, PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.pokedexService = pokedexService;
         this.dailyPackService = dailyPackService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -58,10 +60,10 @@ public class TrainerServiceImpl implements TrainerService {
     @Override
     public TrainerDTO create(AuthRequest request) {
         if (repository.findByUsername(request.getUsername()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
+            throw new DomainConflictException("Username already exists");
         }
 
-        String hashedPassword = PasswordEncoder.encodePassword(request.getPassword());
+        String hashedPassword = passwordEncoder.encode((request.getPassword()));
 
         DailyPackStatus dailyPackStatus = new DailyPackStatus();
 
@@ -120,7 +122,7 @@ public class TrainerServiceImpl implements TrainerService {
 
         // Username already exists and belongs to another trainer
         if (existingTrainer.isPresent() && !existingTrainer.get().getId().equals(trainer.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
+            throw new DomainConflictException("Username already exists");
         }
 
         trainer.updateNameAndUsername(request.getName(), request.getUsername());
@@ -145,7 +147,7 @@ public class TrainerServiceImpl implements TrainerService {
      */
     @Override
     @Transactional
-    public List<PackPokemon> openEnvelope(Trainer trainer) {
+    public BoosterResponseDTO openEnvelope(Trainer trainer) {
         trainer.getDailyPack().onOpenEnvelope();
 
         List<PackPokemon> pokemons = dailyPackService.generateDailyPackPokemons();
@@ -153,6 +155,6 @@ public class TrainerServiceImpl implements TrainerService {
         pokedexService.addPokemonsFromEnvelope(pokemons, trainer.getId());
         repository.save(trainer);
 
-        return pokemons;
+        return new BoosterResponseDTO(pokemons);
     }
 }
