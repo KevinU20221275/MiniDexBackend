@@ -114,6 +114,36 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles the exception thrown when a trainer attempts to open or claim
+     * more envelopes than the allowed daily limit.
+     *
+     * This exception represents a business rule violation rather than a missing resource.
+     * The trainer and envelope system exist, but the operation cannot be completed due to
+     * the current state of the trainer's daily envelope usage.
+     *
+     * HTTP Status: {@code 409 CONFLICT}
+     *
+     * Response body example:
+     * <pre>
+     * {
+     *   "message": "Daily envelope limit already reached"
+     * }
+     * </pre>
+     *
+     * @param ex the {@link EnvelopeLimitReachedException} thrown by the domain layer
+     * @return a {@link ResponseEntity} containing a descriptive error message
+     */
+    @ExceptionHandler(EnvelopeLimitReachedException.class)
+    public ResponseEntity<Map<String, String>> handleEnvelopeLimitReached(EnvelopeLimitReachedException ex){
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "message",
+                        ex.getMessage() != null ? ex.getMessage() : "Daily envelope limit already reached"
+                ));
+    }
+
+    /**
      * Fallback handler for unexpected or unhandled errors.
      * These usually represent bugs or system failures.
      *
@@ -121,7 +151,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGeneral(Exception ex) {
-
+        ex.printStackTrace();
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "Internal server error"));
