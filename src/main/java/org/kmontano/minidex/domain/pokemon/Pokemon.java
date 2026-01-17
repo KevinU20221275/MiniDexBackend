@@ -20,6 +20,7 @@ public class Pokemon {
 
     private Integer numPokedex;
     private String name;
+    private Rarity rarity;
     private Sprites sprites;
     private Boolean shiny;
     private Integer level;
@@ -97,6 +98,15 @@ public class Pokemon {
 
     public Pokemon setName(String name) {
         this.name = name;
+        return this;
+    }
+
+    public Rarity getRarity() {
+        return rarity;
+    }
+
+    public Pokemon setRarity(Rarity rarity) {
+        this.rarity = rarity;
         return this;
     }
 
