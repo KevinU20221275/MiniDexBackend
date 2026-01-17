@@ -2,22 +2,18 @@ package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
-import org.kmontano.minidex.dto.response.PackPokemon;
+import org.kmontano.minidex.dto.response.*;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
-import org.kmontano.minidex.dto.response.PokedexDTO;
-import org.kmontano.minidex.dto.response.PokemonTeamDTO;
 import org.kmontano.minidex.dto.request.PokemonTeamRequest;
 import org.kmontano.minidex.factory.PokemonFactory;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
 import org.kmontano.minidex.auth.AuthUtils;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -58,12 +54,8 @@ public class PokedexController {
     public ResponseEntity<PokedexDTO> getPokedex(Authentication authentication) {
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        return pokedexService.getPokedexByOwner(trainer.getId())
-                .map(PokedexDTO::new).map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Pokedex not found"
-                ));
+        Pokedex pokedex = pokedexService.getPokedexByOwner(trainer.getId());
+        return ResponseEntity.ok(new PokedexDTO(pokedex));
     }
 
     /**
@@ -76,11 +68,7 @@ public class PokedexController {
     public ResponseEntity<PokemonTeamDTO> getPokemonTeam(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        Pokedex pokedex = pokedexService.getPokedexByOwner(trainer.getId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Trainer's Pokedex not found"
-                ));
+        Pokedex pokedex = pokedexService.getPokedexByOwner(trainer.getId());
 
         List<Pokemon> team = pokedex.getPokemonTeamExpanded();
 
@@ -103,13 +91,9 @@ public class PokedexController {
         PokemonResponse pokemonResponse = pokemonApiClient.getPokemonByName(pokemon.getName());
         Pokemon pokemonToSave = pokemonFactory.toFullPokemon(pokemonResponse, pokemon.isShiny());
 
-        return pokedexService.addPokemon(trainer.getId(), pokemonToSave)
-                .map(PokedexDTO::new).map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Failed to add Pokemon"
-                ));
+        Pokedex pokedex = pokedexService.addPokemon(trainer.getId(), pokemonToSave);
 
+        return ResponseEntity.ok(new PokedexDTO(pokedex));
     }
 
     /**
@@ -120,15 +104,12 @@ public class PokedexController {
      * @return updated Pokemon
      */
     @PatchMapping("/evolve/{pokemonId}")
-    public ResponseEntity<Pokemon> evolPokemon(@PathVariable String pokemonId, Authentication authentication){
+    public ResponseEntity<EvolPokemonResponse> evolPokemon(@PathVariable String pokemonId, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        return pokedexService.evolPokemon(trainer, pokemonId)
-                .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Pokemon not found"
-                ));
+        Pokemon pokemon = pokedexService.evolPokemon(trainer, pokemonId);
+
+        return ResponseEntity.ok(new EvolPokemonResponse(trainer.getCoins(), trainer.getXp(), trainer.getLevel(), pokemon));
     }
 
     /**
@@ -152,14 +133,14 @@ public class PokedexController {
      *
      * @param pokemonId       Pokémon identifier
      * @param authentication  current authentication context
-     * @return HTTP 204 if successful
+     * @return TransferPokemonResponse if successful
      */
     @DeleteMapping("/{pokemonId}")
-    public ResponseEntity<Void> removePokemon(@PathVariable String pokemonId, Authentication authentication){
+    public ResponseEntity<TransferPokemonResponse> removePokemon(@PathVariable String pokemonId, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
-        pokedexService.removePokemon(trainer.getId(), pokemonId);
+        pokedexService.removePokemon(trainer, pokemonId);
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(new TransferPokemonResponse(trainer.getLevel(), trainer.getXp(), trainer.getCoins()));
     }
 
     /**
@@ -169,7 +150,7 @@ public class PokedexController {
      * @param authentication  current authentication context
      * @return HTTP 204 if successful
      */
-    @DeleteMapping("/removePokemonToTeam/{pokemonId}")
+    @DeleteMapping("/removePokemonFromTeam/{pokemonId}")
     public ResponseEntity<Void> removePokemonFromTeam(@PathVariable String pokemonId, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
         pokedexService.removePokemonFromTeam(trainer.getId(), pokemonId);
