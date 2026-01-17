@@ -1,10 +1,10 @@
 package org.kmontano.minidex.application.serviceImpl;
 
+import org.kmontano.minidex.application.service.RewardService;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.response.PackPokemon;
-import org.kmontano.minidex.dto.response.PokemonDTO;
 import org.kmontano.minidex.exception.DomainConflictException;
 import org.kmontano.minidex.exception.ResourceNotFoundException;
 import org.kmontano.minidex.factory.PokemonFactory;
@@ -36,6 +36,7 @@ public class PokedexServiceImpl implements PokedexService {
     private final PokemonFactory pokemonFactory;
     private final PokemonApiClient pokemonApiClient;
     private final TrainerRepository trainerRepository;
+    private final RewardService rewardService;
 
     /**
      * Creates a new PokedexServiceImpl.
@@ -44,11 +45,12 @@ public class PokedexServiceImpl implements PokedexService {
      * @param pokemonFactory factory used to build Pokémon domain objects
      * @param pokemonApiClient client used to fetch Pokémon data from external API
      */
-    public PokedexServiceImpl(PokedexRepository repository, PokemonFactory pokemonFactory, PokemonApiClient pokemonApiClient, TrainerRepository trainerRepository) {
+    public PokedexServiceImpl(PokedexRepository repository, PokemonFactory pokemonFactory, PokemonApiClient pokemonApiClient, TrainerRepository trainerRepository, RewardService rewardService) {
         this.repository = repository;
         this.pokemonFactory = pokemonFactory;
         this.pokemonApiClient = pokemonApiClient;
         this.trainerRepository = trainerRepository;
+        this.rewardService = rewardService;
     }
 
     /**
@@ -58,8 +60,9 @@ public class PokedexServiceImpl implements PokedexService {
      * @return optional Pokédex
      */
     @Override
-    public Optional<Pokedex> getPokedexByOwner(String owner) {
-        return repository.getPokedexByOwnerId(owner);
+    public Pokedex getPokedexByOwner(String owner) {
+        return repository.getPokedexByOwnerId(owner)
+                .orElseGet(() -> repository.save(new Pokedex(owner)));
     }
 
     /**
@@ -71,21 +74,11 @@ public class PokedexServiceImpl implements PokedexService {
      * @return updated Pokédex
      */
     @Override
-    public Optional<Pokedex> addPokemon(String owner, Pokemon pokemon) {
-        Optional<Pokedex> pokedex = getPokedexByOwner(owner);
-        if (pokedex.isPresent()){
-            Pokedex pokedexToUpdate = pokedex.get();
-            pokedexToUpdate.getPokemons().add(pokemon);
-            repository.save(pokedexToUpdate);
+    public Pokedex addPokemon(String owner, Pokemon pokemon) {
+        Pokedex pokedex = getPokedexByOwner(owner);
+        pokedex.addPokemon(pokemon);
 
-            return Optional.of(pokedexToUpdate);
-        }
-
-        Pokedex newPokedex = new Pokedex(owner);
-        newPokedex.addPokemon(pokemon);
-        repository.save(newPokedex);
-
-        return Optional.of(newPokedex);
+        return repository.save(pokedex);
     }
 
     /**
@@ -100,8 +93,7 @@ public class PokedexServiceImpl implements PokedexService {
      */
     @Override
     public void addPokemonsFromEnvelope(List<PackPokemon> pokemons, String ownerId) {
-        Pokedex pokedex = repository.getPokedexByOwnerId(ownerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Pokedex not found"));
+        Pokedex pokedex = getPokedexByOwner(ownerId);
 
         for (int i = 0; i < pokemons.size(); i++){
             PokemonResponse p = pokemonApiClient.getPokemonByName(pokemons.get(i).getName());
@@ -126,25 +118,19 @@ public class PokedexServiceImpl implements PokedexService {
     /**
      * Removes a Pokémon from a trainer's Pokédex.
      *
-     * @param owner trainer identifier
+     * @param trainer authenticate trainer
      * @param pokemonId Pokémon unique identifier
-     * @return updated Pokédex
      */
     @Override
-    public Optional<Pokedex> removePokemon(String owner, String pokemonId) {
-        Optional<Pokedex> pokedex = getPokedexByOwner(owner);
-        if (pokedex.isPresent()){
-            Pokedex pokedexToUpdate = pokedex.get();
-            boolean remove = pokedexToUpdate.getPokemons().removeIf(p -> p.getUuid().equals(pokemonId));
+    public void removePokemon(Trainer trainer, String pokemonId) {
+        Pokedex pokedex = getPokedexByOwner(trainer.getId());
 
-            if (!remove) {
-                throw new ResourceNotFoundException("Pokemon is not in pokedex");
-            }
-
-            return Optional.of(repository.save(pokedexToUpdate));
-        }
-
-        return Optional.empty();
+        Pokemon pokemon = pokedex.removePokemonFromPokedex(pokemonId);
+        int coins = rewardService.calculateRewardByTransferPokemon(pokemon);
+        trainer.addXp(coins);
+        trainer.addCoins(coins);
+        repository.save(pokedex);
+        trainerRepository.save(trainer);
     }
 
     /**
@@ -153,22 +139,20 @@ public class PokedexServiceImpl implements PokedexService {
      *
      * @param trainer authenticate trainer owner of pokedex
      * @param pokemonId Pokémon unique identifier
-     * @return updated Pokédex
+     * @return updated Pokémon
      */
     @Override
     @Transactional
-    public Optional<Pokemon> evolPokemon(Trainer trainer, String pokemonId) {
+    public Pokemon evolPokemon(Trainer trainer, String pokemonId) {
         final int EVOLUTION_COST = 100;
 
-        Pokedex pokedex = repository.getPokedexByOwnerId(trainer.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Pokedex not found"));
+        Pokedex pokedex = getPokedexByOwner(trainer.getId());
 
-        Pokemon pokemonToEvol = pokedex.getPokemons().stream()
-                .filter(p -> p.getUuid().equals(pokemonId))
-                .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Pokemon not found"));
+        Pokemon pokemonToEvol = pokedex.findById(pokemonId);
 
         trainer.subtractCoins(EVOLUTION_COST);
+
+        if (pokemonToEvol.getNextEvolution() == null) throw new DomainConflictException("Pokemon can't evolve");
 
         PokemonResponse evolvedResponse = pokemonApiClient.getPokemonByName(pokemonToEvol.getNextEvolution());
 
@@ -178,7 +162,8 @@ public class PokedexServiceImpl implements PokedexService {
 
         trainerRepository.save(trainer);
         repository.save(pokedex);
-        return Optional.of(pokemonToEvol);
+
+        return pokemonToEvol;
     }
 
     /**
@@ -203,15 +188,14 @@ public class PokedexServiceImpl implements PokedexService {
      *
      * @param owner trainer identifier
      * @param pokemonId Pokémon unique identifier
-     * @return updated Pokédex
      */
     @Override
-    public Optional<Pokedex> removePokemonFromTeam(String owner, String pokemonId) {
+    public void removePokemonFromTeam(String owner, String pokemonId) {
         Pokedex pokedex = repository.getPokedexByOwnerId(owner)
                 .orElseThrow(() -> new ResourceNotFoundException("Pokedex not found"));
 
         pokedex.removePokemonFromTeam(pokemonId);
 
-        return Optional.of(repository.save(pokedex));
+        repository.save(pokedex);
     }
 }
