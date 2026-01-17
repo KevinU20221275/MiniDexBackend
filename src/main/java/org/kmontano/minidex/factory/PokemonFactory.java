@@ -2,6 +2,7 @@ package org.kmontano.minidex.factory;
 
 import org.kmontano.minidex.application.service.PokemonTypeCacheService;
 import org.kmontano.minidex.domain.pokemon.*;
+import org.kmontano.minidex.dto.response.PokemonSpeciesData;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
 import org.kmontano.minidex.application.service.EvolutionService;
 import org.kmontano.minidex.utils.PokemonUtils;
@@ -32,11 +33,13 @@ public class PokemonFactory {
                 .map(moveFactory::fromMoveName)
                 .toList();
 
-        Optional<String> nextEvolution = evolutionService.getNextEvolutionName(data.getSpecies().getUrl(), data.getName());
+        PokemonSpeciesData pokemonSpeciesData = evolutionService.getSpeciesData(data.getSpecies().getUrl());
+        Optional<String> nextEvolution = evolutionService.getNextEvolutionName(pokemonSpeciesData.getSpeciesResponse(), data.getName());
 
         Pokemon p = new Pokemon();
         p.setName(data.getName())
                 .setNumPokedex(data.getId())
+                .setRarity(pokemonSpeciesData.getRarity())
                 .setLevel(1)
                 .setShiny(isShiny)
                 .setSprites(utils.selectSprites(data, isShiny))
