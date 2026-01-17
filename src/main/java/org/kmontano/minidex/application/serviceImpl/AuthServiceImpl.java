@@ -5,7 +5,7 @@ import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.response.TrainerDTO;
 import org.kmontano.minidex.exception.DomainValidationException;
 import org.kmontano.minidex.infrastructure.repository.TrainerRepository;
-import org.kmontano.minidex.utils.PasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
