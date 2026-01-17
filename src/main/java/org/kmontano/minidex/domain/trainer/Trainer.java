@@ -1,10 +1,11 @@
 package org.kmontano.minidex.domain.trainer;
 
+import org.kmontano.minidex.exception.DomainConflictException;
 import org.kmontano.minidex.exception.DomainValidationException;
-import org.kmontano.minidex.utils.PasswordEncoder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Document
 @CompoundIndex(name = "unique_username", def = "{'username': 1}", unique = true)
@@ -16,13 +17,17 @@ public class Trainer {
     private String username;
     private String password;
     private Integer level = 1;
-    private Integer coins = 250;
+    private Integer coins = 500;
     private Integer wins = 0;
     private Integer loses = 0;
     private Integer xp = 0;
     private DailyPackStatus dailyPack;
 
     private static final int XP_PER_LEVEL = 1000;
+
+    protected Trainer() {
+        // Required by Spring Data
+    }
 
     /* private constructor: only Builder can create Trainers */
     private Trainer(Builder builder){
@@ -63,7 +68,7 @@ public class Trainer {
 
     public void subtractCoins(int amount){
         if (this.coins < amount){
-            throw new DomainValidationException("You don't have enough coins");
+            throw new DomainConflictException("You don't have enough coins");
         }
 
         this.coins = this.coins - amount;
@@ -84,7 +89,7 @@ public class Trainer {
     }
 
     public boolean matchesPassword(String rawPassword, PasswordEncoder encoder) {
-        return encoder.checkPassword(rawPassword, this.password);
+        return encoder.matches(rawPassword, this.password);
     }
 
     /* =========================
@@ -112,7 +117,7 @@ public class Trainer {
         private String password;
 
         private int level = 1;
-        private int coins = 250;
+        private int coins = 500;
         private int wins = 0;
         private int loses = 0;
         private int xp = 0;

@@ -3,6 +3,7 @@ package org.kmontano.minidex.application.serviceImpl;
 import org.kmontano.minidex.application.service.BattleRewardService;
 import org.kmontano.minidex.domain.battle.model.BattleContext;
 import org.kmontano.minidex.domain.battle.model.BattleStatus;
+import org.kmontano.minidex.domain.pokemon.Pokemon;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.shared.BattleReward;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,14 @@ public class BattleRewardServiceImpl implements BattleRewardService {
     @Override
     public void applyReward(Trainer trainer, BattleReward reward){
         trainer.addCoins(reward.getCoins());
-        trainer.addExperience(reward.getExperience());
+        trainer.addXp(reward.getExperience());
+    }
+    
+    public int calculateRewardByTransferPokemon(Pokemon pokemon){
+        int base = pokemon.getRarity().getBaseCoins();
+
+        int statsBonus = (pokemon.getStats().getAttack() + pokemon.getStats().getDefense() + pokemon.getStats().getHp()) / 10;
+
+        return base + statsBonus + pokemon.getLevel();
     }
 }
