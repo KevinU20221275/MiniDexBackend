@@ -74,6 +74,6 @@ public class DailyPackServiceImpl implements DailyPackService {
 
         PokemonResponse response = pokeApiClient.getPokemonById(pokedexNumber);
 
-        return packPokemonFactory.toPackPokemon(response, SHINY_RATE);
+        return packPokemonFactory.toPackPokemon(response, 1);
     }
 }
