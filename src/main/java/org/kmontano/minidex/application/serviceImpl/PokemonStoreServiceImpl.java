@@ -79,8 +79,8 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
     public BuyBoosterResponseDTO buyBooster(Trainer trainer){
         TrainerShopState state = getOrCreateState(trainer.getId());
 
-        trainer.subtractCoins(PACK_PRICE);
         state.purchasedBooster();
+        trainer.subtractCoins(PACK_PRICE);
 
         List<PackPokemon> pokemons = dailyPackService.getPokemonsFromBoostedPack();
 
@@ -101,8 +101,8 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
     public void buySpecialPokemon(Trainer trainer) {
         TrainerShopState state = getOrCreateState(trainer.getId());
 
-        trainer.subtractCoins(SPECIAL_POKEMON_PRICE);
         state.purchasedSpecialPokemon();
+        trainer.subtractCoins(SPECIAL_POKEMON_PRICE);
 
         PackPokemon specialPokemon = dailyPackService.generateDailySpecial(getDailySpecialRandom(trainer.getId()));
 
@@ -132,7 +132,7 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
                                 )
                         ));
     }
-    
+
     /**
      * Creates a deterministic random generator for the daily special Pokémon.
      * <p>
