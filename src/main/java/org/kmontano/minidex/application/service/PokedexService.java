@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PokedexService {
-    Optional<Pokedex> getPokedexByOwner(String owner);
-    Optional<Pokedex> addPokemon(String owner, Pokemon pokemon);
-    Optional<Pokedex> removePokemon(String owner, String pokemonId);
-    Optional<Pokemon> evolPokemon(Trainer owner, String pokemonId);
+    Pokedex getPokedexByOwner(String owner);
+    Pokedex addPokemon(String owner, Pokemon pokemon);
+    void removePokemon(Trainer trainer, String pokemonId);
+    Pokemon evolPokemon(Trainer owner, String pokemonId);
     Optional<Pokedex> addPokemonToTeam(String owner, String pokemonId);
-    Optional<Pokedex> removePokemonFromTeam(String owner, String pokemonId);
+    void removePokemonFromTeam(String owner, String pokemonId);
     Optional<Pokedex> update(Pokedex pokedex);
     void addPokemonsFromEnvelope(List<PackPokemon> pokemons, String ownerId);
 }
