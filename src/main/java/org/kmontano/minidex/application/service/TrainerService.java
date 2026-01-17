@@ -5,6 +5,7 @@ import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.request.AuthRequest;
 import org.kmontano.minidex.dto.request.UpdateCoinsRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
+import org.kmontano.minidex.dto.response.BoosterResponseDTO;
 import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.TrainerDTO;
 
@@ -20,5 +21,5 @@ public interface TrainerService {
     Optional<Trainer> findTrainerByUsername(String username);
     Optional<Trainer> update(Trainer trainer);
     TrainerDTO updateTrainerNameAndUsername(Trainer trainer, UpdateNameAndUsernameRequest request);
-    List<PackPokemon> openEnvelope(Trainer trainer);
+    BoosterResponseDTO openEnvelope(Trainer trainer);
 }
