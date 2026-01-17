@@ -3,13 +3,11 @@ package org.kmontano.minidex.domain.pokedex;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
 import org.kmontano.minidex.exception.DomainConflictException;
 import org.kmontano.minidex.exception.DomainValidationException;
+import org.kmontano.minidex.exception.ResourceNotFoundException;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -136,6 +134,62 @@ public class Pokedex {
         if (!pokemonTeam.remove(pokemonId)){
             throw new DomainConflictException("Pokemon is not in the team");
         }
+    }
+
+    /**
+     * Removes a Pokémon from the Pokedex by its unique identifier.
+     *
+     * This operation deletes the Pokémon from the trainer's collection.
+     * It is intended to be used when the Pokémon is released or discarded.
+     *
+     * @param pokemonId the unique identifier of the Pokémon to remove
+     * @throws DomainConflictException if the Pokémon does not exist
+     *                                in the Pokedex
+     */
+    public Pokemon removePokemonFromPokedex(String pokemonId){
+        Iterator<Pokemon> iterator = pokemons.iterator();
+
+        while (iterator.hasNext()){
+            Pokemon p = iterator.next();
+            if (p.getUuid().equals(pokemonId)){
+                removeFromTeamIfPresent(pokemonId);
+                iterator.remove();
+                return p;
+            }
+        }
+
+        throw new ResourceNotFoundException("Pokemon is not in pokedex");
+    }
+
+    /**
+     * Removes a Pokémon from the active team if it is present.
+     *
+     * This method ensures domain consistency:
+     * a Pokémon cannot remain in the team if it no longer exists
+     * in the Pokédex. If the Pokémon is not part of the team,
+     * the operation has no effect (idempotent).
+     *
+     * @param pokemonId Unique identifier of the Pokémon to remove from the team.
+     */
+    private void removeFromTeamIfPresent(String pokemonId){
+        pokemonTeam.removeIf(id -> id.equals(pokemonId));
+    }
+
+    /**
+     * Finds a Pokémon in the Pokédex by its unique identifier.
+     *
+     * This method provides controlled access to the Pokémon collection
+     * within the aggregate. If the Pokémon does not exist in the Pokédex,
+     * a domain-level exception is thrown.
+     *
+     * @param pokemonId Unique identifier of the Pokémon to search for.
+     * @return The Pokémon found in the Pokédex.
+     * @throws ResourceNotFoundException if the Pokémon is not present.
+     */
+    public Pokemon findById(String pokemonId){
+        return pokemons.stream().filter(p -> p.getUuid().equals(pokemonId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Pokemon is not in the Pokedex"));
     }
 
     /**
