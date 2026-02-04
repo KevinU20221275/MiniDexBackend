@@ -1,20 +1,23 @@
 package org.kmontano.minidex.controllers;
 
 import jakarta.validation.Valid;
+import org.kmontano.minidex.application.service.PokemonStoreService;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
+import org.kmontano.minidex.domain.pokemon.Pokemon;
 import org.kmontano.minidex.domain.trainer.DailyPackStatus;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.auth.AuthUtils;
 import org.kmontano.minidex.auth.JwtUtil;
+import org.kmontano.minidex.dto.request.PokemonTeamRequest;
 import org.kmontano.minidex.dto.request.UpdateNameAndUsernameRequest;
 import org.kmontano.minidex.dto.response.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * REST controller for Trainer-related operations.
@@ -28,18 +31,19 @@ import org.springframework.web.bind.annotation.*;
  * All endpoints require authentication.
  */
 @RestController
-@RequestMapping("/trainers")
+@RequestMapping("/api/v1/trainers/me")
 @CrossOrigin("${frontend.url}")
 public class TrainerController {
     private final TrainerService trainerService;
     private final PokedexService pokedexService;
     private final JwtUtil jwtUtil;
-    private final Logger log = LoggerFactory.getLogger(TrainerController.class);
+    private final PokemonStoreService pokemonStoreService;
 
-    public TrainerController(TrainerService trainerService, PokedexService pokedexService, JwtUtil jwtUtil) {
+    public TrainerController(TrainerService trainerService, PokedexService pokedexService, JwtUtil jwtUtil, PokemonStoreService pokemonStoreService) {
         this.trainerService = trainerService;
         this.pokedexService = pokedexService;
         this.jwtUtil = jwtUtil;
+        this.pokemonStoreService = pokemonStoreService;
     }
 
     /**
@@ -48,7 +52,7 @@ public class TrainerController {
      * @param authentication Spring Security authentication
      * @return TrainerDTO
      */
-    @GetMapping("/me")
+    @GetMapping
     public ResponseEntity<TrainerDTO> getTrainer(Authentication authentication) {
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
@@ -61,12 +65,100 @@ public class TrainerController {
      * @param authentication Spring Security authentication
      * @return PokedexDTO
      */
-    @GetMapping("/me/pokedex")
+    @GetMapping("/pokedex")
     public ResponseEntity<PokedexDTO> getPokedex(Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
         Pokedex pokedex = pokedexService.getPokedexByOwner(trainer.getId());
 
         return ResponseEntity.ok(new PokedexDTO(pokedex));
+    }
+
+    /**
+     * Returns the current daily envelope status for the trainer.
+     *
+     * @param authentication Spring Security authentication
+     * @return DailyPackStatus
+     */
+    @GetMapping("/daily-packs")
+    public ResponseEntity<DailyPackStatus> getEnvelopes(Authentication authentication){
+        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+
+        DailyPackStatus packs = trainer.getDailyPack();
+        packs.resetIfNeeded();
+
+        return ResponseEntity.ok(packs);
+    }
+
+    /**
+     * Retrieves the expanded Pokémon team of the authenticated trainer.
+     *
+     * @param authentication current authentication context
+     * @return the active Pokémon team
+     */
+    @GetMapping("/team")
+    public ResponseEntity<PokemonTeamDTO> getPokemonTeam(Authentication authentication){
+        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+
+        Pokedex pokedex = pokedexService.getPokedexByOwner(trainer.getId());
+
+        List<Pokemon> team = pokedex.getPokemonTeamExpanded();
+
+        return ResponseEntity.ok(new PokemonTeamDTO(team));
+    }
+
+    /**
+     * Opens the daily envelope and returns the obtained pokemons.
+     *
+     * @param authentication Spring Security authentication
+     * @return list of PackPokemon
+     */
+    @PostMapping("/daily-packs/open")
+    public ResponseEntity<BoosterResponseDTO> openEnvelope(Authentication authentication){
+        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+
+        return ResponseEntity.ok(trainerService.openEnvelope(trainer));
+    }
+
+    /**
+     * Purchases the daily special Pokémon for the authenticated trainer.
+     *
+     * @param authentication Spring Security authentication context
+     * @return HTTP 200 if the purchase was successful
+     */
+    @PostMapping("/pokemon")
+    ResponseEntity<BuySpecialPokemonResponseDTO> buySpecialPokemon(Authentication authentication){
+        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+
+        return ResponseEntity.ok(pokemonStoreService.buySpecialPokemon(trainer));
+    }
+
+    /**
+     * Purchases a booster pack and returns the Pokémon obtained.
+     *
+     * @param authentication Spring Security authentication context
+     * @return Pokémon obtained from the booster pack
+     */
+    @PostMapping("/booster-packs")
+    ResponseEntity<BuyBoosterResponseDTO> buyEnvelope(Authentication authentication){
+        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+
+        return ResponseEntity.ok(pokemonStoreService.buyBooster(trainer));
+    }
+
+    /**
+     * Adds a Pokémon to the trainer's active team.
+     *
+     * @param request         request containing the Pokémon identifier
+     * @param authentication  current authentication context
+     * @return HTTP 200 if successful
+     */
+    @PostMapping("/team")
+    public ResponseEntity<Void> addPokemonTeam(@RequestBody PokemonTeamRequest request, Authentication authentication) {
+        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+
+        pokedexService.addPokemonToTeam(trainer.getId(), request.getPokemonId());
+
+        return ResponseEntity.ok().build();
     }
 
     /**
@@ -79,7 +171,7 @@ public class TrainerController {
      * @param authentication Spring Security authentication
      * @return AuthResponse containing new token and trainer data
      */
-    @PutMapping("/me")
+    @PutMapping
     public ResponseEntity<AuthResponse> updateNameUsername(@Valid @RequestBody UpdateNameAndUsernameRequest request, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
@@ -91,31 +183,45 @@ public class TrainerController {
     }
 
     /**
-     * Returns the current daily envelope status for the trainer.
+     * Evolves a Pokémon in the trainer's Pokedex.
      *
-     * @param authentication Spring Security authentication
-     * @return DailyPackStatus
+     * @param pokemonId       Pokémon identifier
+     * @param authentication  current authentication context
+     * @return updated Pokemon
      */
-    @GetMapping("/me/envelope")
-    public ResponseEntity<DailyPackStatus> getEnvelopes(Authentication authentication){
+    @PostMapping("/pokemons/{pokemonId}/evolution")
+    public ResponseEntity<EvolutionPokemonResponse> evolutionPokemon(@PathVariable String pokemonId, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        DailyPackStatus packs = trainer.getDailyPack();
-        packs.resetIfNeeded();
-
-        return ResponseEntity.ok(packs);
+        return ResponseEntity.ok(pokedexService.evolutionPokemon(trainer, pokemonId));
     }
 
     /**
-     * Opens the daily envelope and returns the obtained pokemons.
+     * Removes a Pokémon from the trainer's active team.
      *
-     * @param authentication Spring Security authentication
-     * @return list of PackPokemon
+     * @param pokemonId       Pokémon identifier
+     * @param authentication  current authentication context
+     * @return HTTP 204 if successful
      */
-    @PatchMapping("/me/envelope/open")
-    public ResponseEntity<BoosterResponseDTO> openEnvelope(Authentication authentication){
+    @DeleteMapping("/team/{pokemonId}")
+    public ResponseEntity<Void> removePokemonFromTeam(@PathVariable String pokemonId, Authentication authentication){
+        Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+        pokedexService.removePokemonFromTeam(trainer.getId(), pokemonId);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Removes a Pokémon from the trainer's Pokedex.
+     *
+     * @param pokemonId       Pokémon identifier
+     * @param authentication  current authentication context
+     * @return TransferPokemonResponse if successful
+     */
+    @DeleteMapping("/pokedex/{pokemonId}")
+    public ResponseEntity<TransferPokemonResponse> removePokemon(@PathVariable String pokemonId, Authentication authentication){
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
 
-        return ResponseEntity.ok(trainerService.openEnvelope(trainer));
+        return ResponseEntity.ok(pokedexService.removePokemon(trainer, pokemonId));
     }
 }
