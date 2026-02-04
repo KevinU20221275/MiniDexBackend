@@ -1,6 +1,5 @@
 package org.kmontano.minidex.utils;
 
-import org.kmontano.minidex.application.service.PokemonTypeCacheService;
 import org.kmontano.minidex.domain.pokemon.*;
 import org.kmontano.minidex.dto.shared.BattlePokemon;
 import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
@@ -69,23 +68,23 @@ public class PokemonUtils {
         Sprites sprites = new Sprites();
 
         if (isShiny) {
-            sprites.setSmallImage(
+            sprites.setMainImage(
                     home != null ? home.getFrontShiny() : null
             );
-            sprites.setFrontMainImage(
+            sprites.setSmallFront(
                     showdown != null ? showdown.getFrontShiny() : null
             );
-            sprites.setBackMainImage(
+            sprites.setSmallBack(
                     showdown != null ? showdown.getBackShiny() : null
             );
         } else {
-            sprites.setSmallImage(
+            sprites.setMainImage(
                     home != null ? home.getFrontDefault() : null
             );
-            sprites.setFrontMainImage(
+            sprites.setSmallFront(
                     showdown != null ? showdown.getFrontDefault() : null
             );
-            sprites.setBackMainImage(
+            sprites.setSmallBack(
                     showdown != null ? showdown.getBackDefault() : null
             );
         }
