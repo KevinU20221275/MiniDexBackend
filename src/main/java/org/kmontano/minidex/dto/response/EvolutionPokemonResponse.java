@@ -2,6 +2,7 @@ package org.kmontano.minidex.dto.response;
 
 import lombok.Data;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
+import org.kmontano.minidex.domain.trainer.Trainer;
 
 @Data
 public class EvolutionPokemonResponse {
@@ -10,10 +11,10 @@ public class EvolutionPokemonResponse {
     private int trainerLevel;
     private PokemonDTO evolvedPokemon;
 
-    public EvolutionPokemonResponse(int trainerCoins, int trainerXp, int trainerLevel, Pokemon evolvedPokemon) {
-        this.trainerCoins = trainerCoins;
-        this.trainerXp = trainerXp;
-        this.trainerLevel = trainerLevel;
+    public EvolutionPokemonResponse(Trainer trainer, Pokemon evolvedPokemon) {
+        this.trainerCoins = trainer.getCoins();
+        this.trainerXp = trainer.getXp();
+        this.trainerLevel = trainer.getLevel();
         this.evolvedPokemon = new PokemonDTO(evolvedPokemon);
     }
 }
