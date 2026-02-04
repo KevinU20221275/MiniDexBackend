@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
  * generating JWT tokens upon successful authentication.
  */
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v1/auth")
 @CrossOrigin("${frontend.url}")
 public class AuthController {
     private final TrainerService trainerService;
