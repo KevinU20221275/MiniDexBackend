@@ -7,6 +7,7 @@ import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.domain.pokemonShop.TrainerShopState;
 import org.kmontano.minidex.domain.trainer.Trainer;
 import org.kmontano.minidex.dto.response.BuyBoosterResponseDTO;
+import org.kmontano.minidex.dto.response.BuySpecialPokemonResponseDTO;
 import org.kmontano.minidex.dto.response.PackPokemon;
 import org.kmontano.minidex.dto.response.PokemonStoreDTO;
 import org.kmontano.minidex.infrastructure.repository.TrainerShopStateRepository;
@@ -81,6 +82,7 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
 
         state.purchasedBooster();
         trainer.subtractCoins(PACK_PRICE);
+        trainer.addXp(PACK_PRICE * 2);
 
         List<PackPokemon> pokemons = dailyPackService.getPokemonsFromBoostedPack();
 
@@ -89,7 +91,7 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
         repository.save(state);
         trainerService.update(trainer);
 
-        return new BuyBoosterResponseDTO(pokemons);
+        return new BuyBoosterResponseDTO(trainer, pokemons);
     }
 
     /**
@@ -98,11 +100,12 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
      * @param trainer authenticated trainer
      */
     @Override
-    public void buySpecialPokemon(Trainer trainer) {
+    public BuySpecialPokemonResponseDTO buySpecialPokemon(Trainer trainer) {
         TrainerShopState state = getOrCreateState(trainer.getId());
 
         state.purchasedSpecialPokemon();
         trainer.subtractCoins(SPECIAL_POKEMON_PRICE);
+        trainer.addXp(SPECIAL_POKEMON_PRICE * 2);
 
         PackPokemon specialPokemon = dailyPackService.generateDailySpecial(getDailySpecialRandom(trainer.getId()));
 
@@ -110,6 +113,7 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
 
         trainerService.update(trainer);
         repository.save(state);
+        return new BuySpecialPokemonResponseDTO(trainer);
     }
 
     /**
