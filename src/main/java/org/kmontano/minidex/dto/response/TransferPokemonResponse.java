@@ -1,6 +1,7 @@
 package org.kmontano.minidex.dto.response;
 
 import lombok.Data;
+import org.kmontano.minidex.domain.trainer.Trainer;
 
 @Data
 public class TransferPokemonResponse {
@@ -8,9 +9,9 @@ public class TransferPokemonResponse {
     private int xp;
     private int coins;
 
-    public TransferPokemonResponse(Integer level, Integer xp, Integer coins) {
-        this.level = level;
-        this.xp = xp;
-        this.coins = coins;
+    public TransferPokemonResponse(Trainer trainer) {
+        this.level = trainer.getLevel();
+        this.xp = trainer.getXp();
+        this.coins = trainer.getCoins();
     }
 }
