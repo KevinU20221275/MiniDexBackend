@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class Sprites {
-    private String smallImage;
-    private String frontMainImage;
-    private String backMainImage;
+    private String smallFront;
+    private String smallBack;
+    private String mainImage;
 }
