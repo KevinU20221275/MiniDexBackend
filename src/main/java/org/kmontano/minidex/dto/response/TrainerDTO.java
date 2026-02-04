@@ -10,7 +10,6 @@ import org.kmontano.minidex.domain.trainer.Trainer;
  */
 @Data
 public class TrainerDTO {
-    private String id;
     private String name;
     private String username;
     private Integer level;
@@ -21,7 +20,6 @@ public class TrainerDTO {
     private DailyPackStatus dailyPackStatus;
 
     public TrainerDTO(Trainer t){
-        this.id = t.getId();
         this.name = t.getName();
         this.username = t.getUsername();
         this.level = t.getLevel();
