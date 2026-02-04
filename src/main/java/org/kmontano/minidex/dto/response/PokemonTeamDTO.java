@@ -7,9 +7,9 @@ import java.util.List;
 
 @Data
 public class PokemonTeamDTO {
-    private List<Pokemon> team;
+    private List<PokemonDTO> team;
 
     public PokemonTeamDTO(List<Pokemon> team) {
-        this.team = team;
+        this.team = team.stream().map(PokemonDTO::new).toList();
     }
 }
