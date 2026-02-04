@@ -1,5 +1,6 @@
 package org.kmontano.minidex.domain.pokemon;
 
+import lombok.Data;
 import org.kmontano.minidex.exception.DomainConflictException;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.UUID;
  * This entity is fully decoupled from external API responses and
  * contains only domain-specific data and behavior.
  */
+@Data
 public class Pokemon {
     /**
      * Unique identifier for this Pokemon instance.
@@ -29,7 +31,7 @@ public class Pokemon {
      * Identifier or name of the next evolution.
      * Null if the Pokemon cannot evolve further.
      */
-    private String nextEvolution;
+    private NextEvolution nextEvolution;
 
     /**
      * Species reference URL, used to resolve evolution chains or metadata.
@@ -77,10 +79,6 @@ public class Pokemon {
     // Getter and Setters
     public String getUuid() {
         return uuid;
-    }
-
-    public void setUuid(String uuid) {
-        this.uuid = uuid;
     }
 
     public Integer getNumPokedex() {
@@ -138,11 +136,11 @@ public class Pokemon {
         return this;
     }
 
-    public String getNextEvolution() {
+    public NextEvolution getNextEvolution() {
         return nextEvolution;
     }
 
-    public Pokemon setNextEvolution(String nextEvolution) {
+    public Pokemon setNextEvolution(NextEvolution nextEvolution) {
         this.nextEvolution = nextEvolution;
         return this;
     }
@@ -219,7 +217,7 @@ public class Pokemon {
      *
      * @return true if the Pokemon can evolve, false otherwise
      */
-    private boolean canEvolve(){
+    public boolean canEvolve(){
         return this.level >= MIN_LEVEL_TO_EVOLVE && this.nextEvolution != null;
     }
 }
