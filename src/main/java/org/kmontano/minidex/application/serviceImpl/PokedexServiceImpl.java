@@ -4,7 +4,9 @@ import org.kmontano.minidex.application.service.RewardService;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
 import org.kmontano.minidex.domain.trainer.Trainer;
+import org.kmontano.minidex.dto.response.EvolutionPokemonResponse;
 import org.kmontano.minidex.dto.response.PackPokemon;
+import org.kmontano.minidex.dto.response.TransferPokemonResponse;
 import org.kmontano.minidex.exception.DomainConflictException;
 import org.kmontano.minidex.exception.ResourceNotFoundException;
 import org.kmontano.minidex.factory.PokemonFactory;
@@ -122,7 +124,7 @@ public class PokedexServiceImpl implements PokedexService {
      * @param pokemonId Pokémon unique identifier
      */
     @Override
-    public void removePokemon(Trainer trainer, String pokemonId) {
+    public TransferPokemonResponse removePokemon(Trainer trainer, String pokemonId) {
         Pokedex pokedex = getPokedexByOwner(trainer.getId());
 
         Pokemon pokemon = pokedex.removePokemonFromPokedex(pokemonId);
@@ -131,6 +133,8 @@ public class PokedexServiceImpl implements PokedexService {
         trainer.addCoins(coins);
         repository.save(pokedex);
         trainerRepository.save(trainer);
+
+        return new TransferPokemonResponse(trainer);
     }
 
     /**
@@ -143,7 +147,7 @@ public class PokedexServiceImpl implements PokedexService {
      */
     @Override
     @Transactional
-    public Pokemon evolPokemon(Trainer trainer, String pokemonId) {
+    public EvolutionPokemonResponse evolutionPokemon(Trainer trainer, String pokemonId) {
         final int EVOLUTION_COST = 100;
 
         Pokedex pokedex = getPokedexByOwner(trainer.getId());
@@ -151,10 +155,11 @@ public class PokedexServiceImpl implements PokedexService {
         Pokemon pokemonToEvol = pokedex.findById(pokemonId);
 
         trainer.subtractCoins(EVOLUTION_COST);
+        trainer.addXp(EVOLUTION_COST);
 
         if (pokemonToEvol.getNextEvolution() == null) throw new DomainConflictException("Pokemon can't evolve");
 
-        PokemonResponse evolvedResponse = pokemonApiClient.getPokemonByName(pokemonToEvol.getNextEvolution());
+        PokemonResponse evolvedResponse = pokemonApiClient.getPokemonByName(pokemonToEvol.getNextEvolution().getName());
 
         Pokemon evolvedPokemon = pokemonFactory.toFullPokemon(evolvedResponse, pokemonToEvol.getShiny());
 
@@ -163,7 +168,7 @@ public class PokedexServiceImpl implements PokedexService {
         trainerRepository.save(trainer);
         repository.save(pokedex);
 
-        return pokemonToEvol;
+        return new EvolutionPokemonResponse(trainer, pokemonToEvol);
     }
 
     /**
