@@ -38,7 +38,7 @@ public class RewardServiceImpl implements RewardService {
     public int calculateRewardByTransferPokemon(Pokemon pokemon){
         int base = pokemon.getRarity().getBaseCoins();
 
-        int statsBonus = (pokemon.getStats().getAttack() + pokemon.getStats().getDefense() + pokemon.getStats().getHp()) / 10;
+        int statsBonus = (pokemon.getStats().getAttack() + pokemon.getStats().getDefense() + pokemon.getStats().getHp() + pokemon.getStats().getSpeed()) / 10;
 
         return base + statsBonus + pokemon.getLevel();
     }
