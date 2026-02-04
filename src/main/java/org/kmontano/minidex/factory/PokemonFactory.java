@@ -34,7 +34,7 @@ public class PokemonFactory {
                 .toList();
 
         PokemonSpeciesData pokemonSpeciesData = evolutionService.getSpeciesData(data.getSpecies().getUrl());
-        Optional<String> nextEvolution = evolutionService.getNextEvolutionName(pokemonSpeciesData.getSpeciesResponse(), data.getName());
+        Optional<NextEvolution> nextEvolution = evolutionService.getNextEvolution(pokemonSpeciesData.getSpeciesResponse(), data.getName());
 
         Pokemon p = new Pokemon();
         p.setName(data.getName())
