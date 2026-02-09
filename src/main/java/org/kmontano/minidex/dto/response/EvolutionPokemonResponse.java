@@ -6,15 +6,15 @@ import org.kmontano.minidex.domain.trainer.Trainer;
 
 @Data
 public class EvolutionPokemonResponse {
-    private int trainerCoins;
-    private int trainerXp;
-    private int trainerLevel;
+    private int coins;
+    private int xp;
+    private int level;
     private PokemonDTO evolvedPokemon;
 
     public EvolutionPokemonResponse(Trainer trainer, Pokemon evolvedPokemon) {
-        this.trainerCoins = trainer.getCoins();
-        this.trainerXp = trainer.getXp();
-        this.trainerLevel = trainer.getLevel();
+        this.coins = trainer.getCoins();
+        this.xp = trainer.getXp();
+        this.level = trainer.getLevel();
         this.evolvedPokemon = new PokemonDTO(evolvedPokemon);
     }
 }
