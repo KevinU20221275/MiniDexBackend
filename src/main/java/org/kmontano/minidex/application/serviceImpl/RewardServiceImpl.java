@@ -40,6 +40,7 @@ public class RewardServiceImpl implements RewardService {
 
         int statsBonus = (pokemon.getStats().getAttack() + pokemon.getStats().getDefense() + pokemon.getStats().getHp() + pokemon.getStats().getSpeed()) / 10;
 
-        return base + statsBonus + pokemon.getLevel();
+        int shinyBonus = pokemon.getShiny() ? 3 : 1;
+        return (base + statsBonus + pokemon.getLevel()) * shinyBonus;
     }
 }
