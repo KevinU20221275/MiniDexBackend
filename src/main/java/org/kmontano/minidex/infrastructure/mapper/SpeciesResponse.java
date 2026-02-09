@@ -6,4 +6,7 @@ import lombok.Data;
 public class SpeciesResponse {
     private EvolutionChain evolution_chain;
     private String name;
+    private boolean is_legendary;
+    private boolean is_mythical;
+    private Integer capture_rate;
 }
