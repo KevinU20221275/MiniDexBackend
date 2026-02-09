@@ -7,5 +7,5 @@ import java.util.List;
 @Data
 public class ChainLink {
     private List<ChainLink> evolves_to;
-    private SpeciesResponse species;
+    private Species species;
 }
