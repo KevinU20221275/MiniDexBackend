@@ -6,10 +6,7 @@ import org.kmontano.minidex.application.service.PokemonStoreService;
 import org.kmontano.minidex.application.service.TrainerService;
 import org.kmontano.minidex.domain.pokemonShop.TrainerShopState;
 import org.kmontano.minidex.domain.trainer.Trainer;
-import org.kmontano.minidex.dto.response.BuyBoosterResponseDTO;
-import org.kmontano.minidex.dto.response.BuySpecialPokemonResponseDTO;
-import org.kmontano.minidex.dto.response.PackPokemon;
-import org.kmontano.minidex.dto.response.PokemonStoreDTO;
+import org.kmontano.minidex.dto.response.*;
 import org.kmontano.minidex.infrastructure.repository.TrainerShopStateRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +26,6 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
     private final Integer PACK_PRICE = 200;
 
     /** Price of the daily special Pokémon */
-    private final Integer SPECIAL_POKEMON_PRICE = 200;
 
     private final TrainerShopStateRepository repository;
     private final DailyPackService dailyPackService;
@@ -55,11 +51,11 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
     public PokemonStoreDTO getDailyStore(Trainer trainer){
         TrainerShopState state = getOrCreateState(trainer.getId());
 
-        PackPokemon specialPokemon = dailyPackService.generateDailySpecial(getDailySpecialRandom(trainer.getId()));
+        DailySpecialPokemonInfoDTO specialPokemon = dailyPackService.generateDailySpecial(getDailySpecialRandom(trainer.getId()));
 
         return new PokemonStoreDTO(
-                specialPokemon,
-                SPECIAL_POKEMON_PRICE,
+                specialPokemon.getSpecialPokemon(),
+                specialPokemon.getPrice(),
                 state.isSpecialPokemonPurchased(),
                 PACK_PRICE,
                 state.getRemainingBoosters()
@@ -99,17 +95,18 @@ public class PokemonStoreServiceImpl implements PokemonStoreService {
      *
      * @param trainer authenticated trainer
      */
+    @Transactional
     @Override
     public BuySpecialPokemonResponseDTO buySpecialPokemon(Trainer trainer) {
         TrainerShopState state = getOrCreateState(trainer.getId());
 
+        DailySpecialPokemonInfoDTO specialPokemon = dailyPackService.generateDailySpecial(getDailySpecialRandom(trainer.getId()));
+
         state.purchasedSpecialPokemon();
-        trainer.subtractCoins(SPECIAL_POKEMON_PRICE);
-        trainer.addXp(SPECIAL_POKEMON_PRICE * 2);
+        trainer.subtractCoins(specialPokemon.getPrice());
+        trainer.addXp(specialPokemon.getPrice() * 2);
 
-        PackPokemon specialPokemon = dailyPackService.generateDailySpecial(getDailySpecialRandom(trainer.getId()));
-
-        pokedexService.addPokemonsFromEnvelope(List.of(specialPokemon), trainer.getId());
+        pokedexService.addPokemonsFromEnvelope(List.of(specialPokemon.getSpecialPokemon()), trainer.getId());
 
         trainerService.update(trainer);
         repository.save(state);
