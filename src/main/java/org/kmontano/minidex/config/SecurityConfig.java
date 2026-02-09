@@ -1,6 +1,7 @@
 package org.kmontano.minidex.config;
 
 import org.kmontano.minidex.auth.JwtFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -29,13 +30,8 @@ public class SecurityConfig {
     // Filtro JWT personalizado para manejar autenticación basada en token
     private final JwtFilter jwtFilter;
 
-    // constante para agrupar las rutas publicas
-    private static final String[] PUBLIC_ENDPOINTS = {
-            "/auth/**",
-            "/swagger-ui/**",
-            "/v3/api-docs/**",
-            "/h2-console/**"
-    };
+    @Value("${api.version}")
+    private String apiVersion;
 
     // Inyección del filtro JWT mediante constructor
     public SecurityConfig(JwtFilter jwtFilter) {
@@ -51,6 +47,12 @@ public class SecurityConfig {
      */
     @Bean
     SecurityFilterChain configureSecurity(HttpSecurity http) throws Exception {
+        // constante para agrupar las rutas publicas
+        String[] PUBLIC_ENDPOINTS = {
+                "/api/" + apiVersion + "/auth/**",
+                "/v3/api-docs/**"
+        };
+
         return http
                 // Configura CORS usando el bean corsConfigurationSource() de la clase CorsConfig
                 .cors(Customizer.withDefaults())
