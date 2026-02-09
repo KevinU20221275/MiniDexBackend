@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
  */
 
 @RestController
-@RequestMapping("/api/v1/shop")
+@RequestMapping("/api/${api.version}/shop")
 @CrossOrigin("${frontend.url}")
 public class PokemonStoreController {
     private final PokemonStoreService pokemonStoreService;

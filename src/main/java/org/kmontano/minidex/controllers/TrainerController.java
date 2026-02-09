@@ -31,7 +31,7 @@ import java.util.List;
  * All endpoints require authentication.
  */
 @RestController
-@RequestMapping("/api/v1/trainers/me")
+@RequestMapping("/api/${api.version}/trainers/me")
 @CrossOrigin("${frontend.url}")
 public class TrainerController {
     private final TrainerService trainerService;
