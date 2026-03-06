@@ -1,33 +1,47 @@
 package org.kmontano.minidex.domain.battle.model;
 
 import lombok.Data;
-import org.kmontano.minidex.domain.enemy.EnemyBattleState;
 import org.kmontano.minidex.dto.shared.BattlePokemon;
 
-import java.util.ArrayList;
 import java.util.List;
 
+// pepe empezamos
 @Data
 public class BattleContext {
+    private String battleId;
+    private String trainerId;
     private BattlePokemon player;
     private BattlePokemon enemy;
-    private BattleTurn currentTurn;
-    private BattleStatus status;
-    private EnemyBattleState enemyBattleState;
     private List<BattlePokemon> playerTeam;
     private List<BattlePokemon> enemyTeam;
-    private List<BattleLogEntry> logs = new ArrayList<>();
+    private BattleStatus status;
 
-    public BattleContext(BattlePokemon player, BattlePokemon enemy, BattleTurn currentTurn, BattleStatus status) {
+    public BattleContext(BattlePokemon player, BattlePokemon enemy, List<BattlePokemon> playerTeam, List<BattlePokemon> enemyTeam, String trainerId) {
+        this.trainerId = trainerId;
         this.player = player;
         this.enemy = enemy;
-        this.currentTurn = currentTurn;
-        this.status = status;
-        this.enemyBattleState = new EnemyBattleState();
+        this.status = BattleStatus.IN_PROGRESS;
+        this.playerTeam = playerTeam;
+        this.enemyTeam = enemyTeam;
     }
 
-    public void log(BattleLogEntry entry) {
-        this.logs.add(entry);
+    public void switchPlayer(BattlePokemon next) {
+        this.player = next;
     }
 
+    public void switchEnemy(BattlePokemon next) {
+        this.enemy = next;
+    }
+
+    public boolean isPlayerDefeated() {
+        return playerTeam.stream().allMatch(BattlePokemon::isFainted);
+    }
+
+    public boolean isEnemyDefeated() {
+        return enemyTeam.stream().allMatch(BattlePokemon::isFainted);
+    }
+
+    public void endBattle(BattleStatus result) {
+        this.status = result;
+    }
 }
