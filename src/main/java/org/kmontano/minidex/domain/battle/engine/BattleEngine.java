@@ -1,29 +1,52 @@
 package org.kmontano.minidex.domain.battle.engine;
 
 import org.kmontano.minidex.domain.battle.BattleAction;
+import org.kmontano.minidex.domain.battle.model.BattleSide;
+import org.kmontano.minidex.domain.battle.action.SwitchAction;
 import org.kmontano.minidex.domain.battle.model.BattleContext;
-import org.kmontano.minidex.domain.battle.model.BattleStatus;
-import org.kmontano.minidex.domain.battle.model.BattleTurn;
+
+import org.kmontano.minidex.domain.battle.event.BattleEventDTO;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Stream;
 
 @Component
 public class BattleEngine {
-    public void executeTurn(BattleContext context, BattleAction action){
-        action.execute(context);
+    public void executeTurn(BattleContext context, BattleAction playerAction, BattleAction enemyAction, BattleEventCollector collector){
+        List<BattleAction> orderedActions = orderActions(playerAction, enemyAction, context);
 
-        if (context.getEnemy().isFainted()){
-            context.setStatus(BattleStatus.PLAYER_WON);
-            return;
+        for (BattleAction action: orderedActions){
+            if (context.getPlayer().isFainted() && !(action instanceof SwitchAction && ((SwitchAction) action).getSide() == BattleSide.PLAYER)){
+                continue;
+            };
+
+            if (context.getEnemy().isFainted() && !(action instanceof SwitchAction && ((SwitchAction) action).getSide() == BattleSide.ENEMY)) {
+                continue;
+            }
+
+            BattleEventDTO event = action.execute(context);
+            collector.add(event);
         }
+    }
 
-        if (context.getPlayer().isFainted()){
-            context.setStatus(BattleStatus.ENEMY_WON);
-            return;
-        }
+    public List<BattleAction> orderActions(BattleAction playerAction, BattleAction enemyAction, BattleContext context){
+        return Stream.of(playerAction, enemyAction)
+                .sorted((a,b) -> {
+                    int priorityCompare = Integer.compare(b.getPriority(), a.getPriority());
 
-        context.setCurrentTurn(
-                context.getCurrentTurn() == BattleTurn.PLAYER
-                ? BattleTurn.ENEMY : BattleTurn.PLAYER
-        );
+                    if (priorityCompare != 0) return priorityCompare;
+
+                    int speedA = a.getActor(context).getSpeed();
+                    int speedB = b.getActor(context).getSpeed();
+
+                    int speedCompare = Integer.compare(speedB, speedA);
+
+                    if (speedCompare != 0) return speedCompare;
+
+                    return ThreadLocalRandom.current().nextBoolean() ? 1 : -1;
+                })
+                .toList();
     }
 }
