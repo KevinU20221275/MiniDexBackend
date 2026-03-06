@@ -31,6 +31,21 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Facade responsible for coordinating battle operations.
+ *
+ * <p>This class acts as the main entry point for battle logic
+ * from the controller layer.</p>
+ *
+ * Responsibilities:
+ * - Resolve player actions
+ * - Execute battle turns
+ * - Handle forced switches
+ * - Coordinate the battle engine
+ *
+ * This class simplifies interaction with the battle subsystem
+ * and prevents the controller from accessing domain logic directly.
+ */
 @Component
 public class BattleFacade {
     private final BattleInitializer initializer;
