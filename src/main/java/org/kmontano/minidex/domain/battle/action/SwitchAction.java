@@ -8,6 +8,16 @@ import org.kmontano.minidex.domain.battle.event.BattleEventDTO;
 import org.kmontano.minidex.domain.battle.event.SwitchEventDTO;
 import org.kmontano.minidex.dto.shared.BattlePokemon;
 
+/**
+ * Battle action that changes the active Pokémon.
+ *
+ * <p>This action may represent two different types of switch:</p>
+ *
+ * - Forced switch (when a Pokémon faints)
+ * - Strategic switch (voluntary trainer decision)
+ *
+ * Strategic switches consume the turn, while forced switches do not.
+ */
 @Data
 public class SwitchAction implements BattleAction {
     private final BattlePokemon nextPokemon;
