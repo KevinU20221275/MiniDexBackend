@@ -3,6 +3,22 @@ package org.kmontano.minidex.domain.battle.calculator;
 import org.kmontano.minidex.domain.pokemon.Move;
 import org.kmontano.minidex.dto.shared.BattlePokemon;
 
+/**
+ * Utility responsible for calculating base damage of an attack.
+ *
+ * <p>This class implements the simplified damage formula used
+ * by the battle engine.</p>
+ *
+ * Factors used:
+ * - Attacker level
+ * - Move power
+ * - Attack stat
+ * - Defense stat
+ * - Type effectiveness
+ * - STAB (Same Type Attack Bonus)
+ *
+ * The final result is always at least 1 damage.
+ */
 public class DamageCalculator {
     public static int calculate(BattlePokemon attacker, BattlePokemon defender, Move move, double effectiveness, double stab){
         int balanceMultiplier = 4;
