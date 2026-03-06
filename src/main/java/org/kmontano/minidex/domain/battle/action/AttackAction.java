@@ -1,63 +1,63 @@
 package org.kmontano.minidex.domain.battle.action;
 
 import org.kmontano.minidex.domain.battle.*;
-import org.kmontano.minidex.domain.battle.engine.TypeEffectivenessCalculator;
 import org.kmontano.minidex.domain.battle.model.BattleContext;
-import org.kmontano.minidex.domain.battle.model.BattleLogEntry;
-import org.kmontano.minidex.domain.battle.model.BattleTurn;
 import org.kmontano.minidex.domain.pokemon.Move;
+import org.kmontano.minidex.dto.response.AttackEventDTO;
+import org.kmontano.minidex.dto.response.BattleEventDTO;
 import org.kmontano.minidex.dto.shared.BattlePokemon;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 public class AttackAction implements BattleAction {
-    private Move move;
+    private final Move move;
+    private final BattleSide side;
+    private final AttackResolutionService resolutionService;
 
-    public AttackAction(Move randomMove) {
-        this.move = randomMove;
+    public AttackAction(Move move, BattleSide side, AttackResolutionService resolutionService) {
+        this.move = move;
+        this.side = side;
+        this.resolutionService = resolutionService;
     }
 
     @Override
-    public void execute(BattleContext context) {
-        BattlePokemon attacker = context.getCurrentTurn() == BattleTurn.PLAYER
-                ? context.getPlayer()
-                : context.getEnemy();
+    public BattlePokemon getActor(BattleContext context) {
+        return side == BattleSide.PLAYER ? context.getPlayer() : context.getEnemy();
+    }
 
-        BattlePokemon defender = attacker == context.getPlayer()
-                ? context.getEnemy()
-                : context.getPlayer();
+    @Override
+    public BattleEventDTO execute(BattleContext context) {
+        BattlePokemon attacker = getActor(context);
+        BattlePokemon defender = side == BattleSide.PLAYER
+                ? context.getEnemy() : context.getPlayer();
 
-        int accuracy = move.getAccuracy() != null ? move.getAccuracy() : 100;
-        boolean hit = ThreadLocalRandom.current().nextInt(100) < accuracy;
         int hpBefore = defender.getCurrentHp();
-        double effectiviness = 0.0;
-        int baseDamage = 0;
-        double stab = 0;
-        int finalDamage = 0;
 
-        if (hit) {
-            effectiviness = TypeEffectivenessCalculator.calculate(move.getType(),defender.getTypes());
+        AttackResult result = resolutionService.resolve(attacker, defender, move);
 
-            int power = move.getPower() != null ? move.getPower() : 1;
-
-            baseDamage = (attacker.getAttack() * power) / defender.getDefense();
-
-            stab = attacker.getTypes().contains(move.getType()) ? 1.5 : 1.0;
-            finalDamage = (int) Math.max(1, baseDamage * effectiviness * stab);
-
-            defender.setCurrentHp(Math.max(0, defender.getCurrentHp() - finalDamage));
+        if (result.isHit()){
+            defender.setCurrentHp(Math.max(0, hpBefore - result.getDamage()));
         }
 
-        context.log(new BattleLogEntry(
-                attacker.getName(),
-                defender.getName(),
-                move.getMoveName(),
-                baseDamage,
-                effectiviness,
-                stab,
-                finalDamage,
-                hpBefore,
-                defender.getCurrentHp()
-        ));
+        return buildEvent(result, hpBefore, defender.getCurrentHp());
+    }
+
+    private AttackEventDTO buildEvent(AttackResult result, int hpBefore, int hpAfter){
+        AttackEventDTO event = new AttackEventDTO();
+
+        event.setSide(side);
+        event.setMoveName(result.getMove().getMoveName());
+        event.setMoveType(result.getMove().getType().toString());
+        event.setHit(result.isHit());
+        event.setDamage(result.getDamage());
+        event.setHpBefore(hpBefore);
+        event.setHpAfter(hpAfter);
+        event.setEffectiveness(result.getEffectiveness());
+        event.setHitResult(result.getHitResult());
+
+        return event;
+    }
+
+    @Override
+    public int getPriority() {
+        return 0;
     }
 }
