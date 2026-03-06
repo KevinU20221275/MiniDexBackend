@@ -1,10 +1,11 @@
 package org.kmontano.minidex.domain.battle.action;
 
 import lombok.Data;
-import org.kmontano.minidex.domain.battle.BattleAction;
+import org.kmontano.minidex.domain.battle.event.StrategicSwitchEventDTO;
 import org.kmontano.minidex.domain.battle.model.BattleContext;
-import org.kmontano.minidex.dto.response.BattleEventDTO;
-import org.kmontano.minidex.dto.response.SwitchEventDTO;
+import org.kmontano.minidex.domain.battle.model.BattleSide;
+import org.kmontano.minidex.domain.battle.event.BattleEventDTO;
+import org.kmontano.minidex.domain.battle.event.SwitchEventDTO;
 import org.kmontano.minidex.dto.shared.BattlePokemon;
 
 @Data
