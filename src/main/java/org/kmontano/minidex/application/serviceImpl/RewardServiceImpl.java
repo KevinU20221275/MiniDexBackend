@@ -32,6 +32,7 @@ public class RewardServiceImpl implements RewardService {
     public void applyBattleReward(Trainer trainer, BattleReward reward){
         trainer.addCoins(reward.getCoins());
         trainer.addXp(reward.getExperience());
+        trainer.onWin();
     }
 
 
