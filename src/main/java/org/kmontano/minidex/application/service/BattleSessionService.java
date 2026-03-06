@@ -4,6 +4,6 @@ import org.kmontano.minidex.domain.battle.model.BattleContext;
 
 public interface BattleSessionService {
     String createBattle(BattleContext context);
-    BattleContext getBattle(String battleId);
+    BattleContext getBattle(String battleId, String trainerId);
     void removeBattle(String battleId);
 }

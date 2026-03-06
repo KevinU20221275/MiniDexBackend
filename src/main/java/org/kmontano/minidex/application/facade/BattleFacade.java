@@ -1,133 +1,184 @@
 package org.kmontano.minidex.application.facade;
 
-import org.kmontano.minidex.domain.pokedex.Pokedex;
-import org.kmontano.minidex.domain.enemy.service.EnemyAiDecisionService;
-import org.kmontano.minidex.domain.enemy.EnemyBattleState;
-import org.kmontano.minidex.domain.battle.*;
+import org.kmontano.minidex.application.service.BattleSessionService;
 import org.kmontano.minidex.domain.battle.action.AttackAction;
+import org.kmontano.minidex.domain.battle.action.BattleAction;
+import org.kmontano.minidex.domain.battle.service.AttackResolutionService;
+import org.kmontano.minidex.domain.battle.model.BattleSide;
 import org.kmontano.minidex.domain.battle.action.SwitchAction;
-import org.kmontano.minidex.domain.battle.model.BattleContext;
-import org.kmontano.minidex.domain.battle.model.BattleStatus;
-import org.kmontano.minidex.domain.battle.model.BattleTurn;
+import org.kmontano.minidex.domain.battle.engine.BattleEngine;
+import org.kmontano.minidex.domain.battle.engine.BattleEventCollector;
+import org.kmontano.minidex.domain.battle.engine.BattleFinisher;
+import org.kmontano.minidex.domain.battle.engine.BattleInitializer;
+import org.kmontano.minidex.domain.battle.model.*;
+import org.kmontano.minidex.domain.enemy.service.EnemyAiDecisionService;
 import org.kmontano.minidex.domain.pokemon.Move;
-import org.kmontano.minidex.domain.pokemon.Pokemon;
 import org.kmontano.minidex.domain.trainer.Trainer;
-import org.kmontano.minidex.dto.shared.BattlePokemon;
-import org.kmontano.minidex.dto.shared.BattleReward;
 import org.kmontano.minidex.dto.request.BattleTurnRequest;
-import org.kmontano.minidex.factory.PokemonFactory;
-import org.kmontano.minidex.infrastructure.mapper.PokemonResponse;
-import org.kmontano.minidex.application.serviceImpl.BattleRewardServiceImpl;
-import org.kmontano.minidex.application.service.PokedexService;
-import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
-import org.kmontano.minidex.utils.PokemonUtils;
+import org.kmontano.minidex.domain.battle.event.BattleEventDTO;
+
+import org.kmontano.minidex.domain.battle.event.FaintEventDTO;
+import org.kmontano.minidex.domain.battle.event.SwitchEventDTO;
+import org.kmontano.minidex.dto.response.BattleTurnResponse;
+import org.kmontano.minidex.dto.shared.ActionType;
+import org.kmontano.minidex.dto.shared.BattlePokemon;
+import org.kmontano.minidex.exception.DomainConflictException;
+import org.kmontano.minidex.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Component
 public class BattleFacade {
-    private PokemonApiClient pokemonApiClient;
-    private PokemonUtils pokemonUtils;
-    private PokemonFactory pokemonFactory;
-    private EnemyAiDecisionService enemyAiDecisionService;
-    private BattleRewardServiceImpl battleRewardService;
-    private PokedexService pokedexService;
+    private final BattleInitializer initializer;
+    private final BattleEngine engine;
+    private final BattleFinisher finisher;
+    private final EnemyAiDecisionService enemyAi;
+    private final BattleSessionService battleSessionService;
+    private final AttackResolutionService attackResolutionService;
 
-    public BattleFacade(PokemonApiClient pokemonApiClient, PokemonUtils pokemonUtils, PokemonFactory pokemonFactory, EnemyAiDecisionService enemyAiDecisionService, BattleRewardServiceImpl battleRewardService, PokedexService pokedexService) {
-        this.pokemonApiClient = pokemonApiClient;
-        this.pokemonUtils = pokemonUtils;
-        this.pokemonFactory = pokemonFactory;
-        this.enemyAiDecisionService = enemyAiDecisionService;
-        this.battleRewardService = battleRewardService;
-        this.pokedexService = pokedexService;
+    public BattleFacade(BattleInitializer initializer, BattleEngine engine, BattleFinisher finisher, EnemyAiDecisionService enemyAi, BattleSessionService battleSessionService, AttackResolutionService attackResolutionService) {
+        this.initializer = initializer;
+        this.engine = engine;
+        this.finisher = finisher;
+        this.enemyAi = enemyAi;
+        this.battleSessionService = battleSessionService;
+        this.attackResolutionService = attackResolutionService;
+    }
+
+    public BattleTurnResponse playTurn(BattleTurnRequest request, Trainer trainer){
+        BattleContext context = battleSessionService.getBattle(request.getBattleId(), trainer.getId());
+
+        if (context.getStatus() != BattleStatus.IN_PROGRESS){
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Battle is already finished"
+            );
+        }
+
+        if (request.getAction() == ActionType.ATTACK && context.getPlayer().isFainted()){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Your Pokémon has fainted, you must switch");
+        }
+
+        if (request.getAction() == ActionType.SWITCH && context.getPlayer().isFainted()){
+            BattleEventDTO event = forcePlayerSwitch(context, request.getPokemonUuid());
+
+            return new BattleTurnResponse(context, List.of(event));
+        }
+
+        BattleAction playerAction = resolvePlayerAction(context, request);
+
+        List<BattleEventDTO> events = executeTurn(context, playerAction, trainer);
+
+        return new BattleTurnResponse(context, events);
     }
 
     public BattleContext initBattle(String trainerId){
-        Pokedex pokedex = pokedexService.getPokedexByOwner(trainerId).orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontro la pokedex del entrenador"));
-
-        if (pokedex.getPokemonTeam().size() < 6) throw  new ResponseStatusException(HttpStatus.BAD_REQUEST, "No tienes sufientes pokemons en el team");
-
-        List<BattlePokemon> enemyTeam = loadAiTeam();
-        List<BattlePokemon> playerTeamToBattle = pokemonUtils.toBattleTeam(pokedex.getPokemonTeamExpanded());
-        BattleContext battleContext = new BattleContext(playerTeamToBattle.get(0), enemyTeam.get(0), BattleTurn.PLAYER, BattleStatus.IN_PROGRESS);
-        battleContext.setEnemyTeam(enemyTeam);
-        battleContext.setPlayerTeam(playerTeamToBattle);
-
-        return battleContext;
+        return initializer.initBattle(trainerId);
     }
 
-    public List<BattlePokemon> loadAiTeam(){
-        List<Pokemon> pokemons = new ArrayList<>();
-        for (int i = 0; i < 6; i++){
-            int randonId = ThreadLocalRandom.current().nextInt(1, 251);
-            PokemonResponse pr = pokemonApiClient.getPokemonById(randonId);
-            Pokemon p = pokemonFactory.toFullPokemon(pr, true);
-            pokemons.add(p);
+    public List<BattleEventDTO> executeTurn(BattleContext context, BattleAction playerAction, Trainer trainer){
+        BattleEventCollector collector = new BattleEventCollector();
+
+        BattleAction enemyAction = enemyAi.decide(context);
+
+        engine.executeTurn(context, playerAction, enemyAction, collector);
+
+        resolvePostTurn(context, trainer, collector);
+
+        return collector.consume();
+    }
+
+    public BattleTurnResponse surrender(String battleId, Trainer trainer) {
+        BattleContext context = battleSessionService.getBattle(battleId, trainer.getId());
+
+        if (context.getStatus() != BattleStatus.IN_PROGRESS) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Battle already finished");
         }
 
-        return pokemonUtils.toBattleTeam(pokemons);
+        BattleEventCollector collector = new BattleEventCollector();
+
+        context.endBattle(BattleStatus.ENEMY_WON);
+
+        finisher.finish(context, trainer, collector);
+
+        battleSessionService.removeBattle(context.getBattleId());
+
+        List<BattleEventDTO> events = collector.consume();
+
+        return new BattleTurnResponse(context, events);
+    }
+
+    private void resolvePostTurn(BattleContext context, Trainer trainer, BattleEventCollector eventCollector){
+        if (context.getEnemy().isFainted()){
+            eventCollector.add(new FaintEventDTO(BattleSide.ENEMY, context.getEnemy().getPokemonId()));
+
+
+            Optional<BattlePokemon> next = enemyAi.switchByKO(context.getEnemy(), context.getPlayer(), context.getEnemyTeam());
+
+            if (next.isPresent()){
+                BattlePokemon snapshot = next.get().copy();
+                context.switchEnemy(next.get());
+
+                eventCollector.add(new SwitchEventDTO(BattleSide.ENEMY, snapshot));
+            } else {
+                context.endBattle(BattleStatus.PLAYER_WON);
+                finisher.finish(context, trainer, eventCollector);
+                battleSessionService.removeBattle(context.getBattleId());
+            }
+        }
+
+        if (context.getPlayer().isFainted()){
+            eventCollector.add(new FaintEventDTO(BattleSide.PLAYER, context.getPlayer().getPokemonId()));
+
+            if (context.isPlayerDefeated()){
+                context.endBattle(BattleStatus.ENEMY_WON);
+                finisher.finish(context, trainer, eventCollector);
+                battleSessionService.removeBattle(context.getBattleId());
+            }
+        }
     }
 
     public BattleAction resolvePlayerAction(BattleContext context, BattleTurnRequest request){
-        return switch (request.getAction()){
+        switch (request.getAction()){
             case ATTACK -> {
-                Move move = context.getPlayer().getMoves().stream()
-                        .filter(m -> m.getMoveName().equalsIgnoreCase(request.getMoveName()))
-                        .findFirst()
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Movimiento invalido"));
-                yield new AttackAction(move);
+                Optional<Move> moveOp = context.getPlayer().getMoves().stream().filter(m -> m.getMoveName().equals(request.getMoveName())).findFirst();
+                if (moveOp.isPresent()){
+                    return new AttackAction(moveOp.get(), BattleSide.PLAYER, attackResolutionService);
+                }
+                throw new ResourceNotFoundException("Your pokemon don't know this move");
             }
             case SWITCH -> {
-                BattlePokemon target = context.getPlayerTeam().stream()
-                        .filter(p -> p.getPokemonId().equals(request.getPokemonUuid()))
-                        .filter(p -> !p.isFainted())
-                        .findFirst()
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cambio invalido"));
-
-                yield new SwitchAction(target);
+                return new SwitchAction(findPokemon(context, request.getPokemonUuid()), BattleSide.PLAYER);
             }
-        };
-    }
-
-    public BattleAction resolveEnemyAction(BattleContext context){
-        BattlePokemon enemy = context.getEnemy();
-        BattlePokemon player  = context.getPlayer();
-        EnemyBattleState state = context.getEnemyBattleState();
-
-        return enemyAiDecisionService.decide(enemy, player, context.getEnemyTeam(), state);
-    }
-
-    public boolean lostBattle(List<BattlePokemon> team){
-        return team.stream().allMatch(BattlePokemon::isFainted);
-    }
-
-    public void handleEnemyFaint(BattleContext context){
-        Optional<BattlePokemon> pokemon = enemyAiDecisionService.swicthByKO(context.getEnemy(), context.getPlayer(), context.getEnemyTeam());
-        if (pokemon.isPresent()){
-            context.setEnemy(pokemon.get());
-        } else {
-            context.setStatus(BattleStatus.PLAYER_WON);
+            default -> {
+                throw new IllegalStateException("Action type error");
+            }
         }
     }
 
-    public void applyReward(BattleContext context, Trainer trainer){
-        BattleReward reward = battleRewardService.calculate(context);
-        battleRewardService.applyReward(trainer, reward);
+    public BattleEventDTO forcePlayerSwitch(BattleContext context, String pokemonId){
+        BattlePokemon next = findPokemon(context, pokemonId);
+
+        BattlePokemon snapshot = next.copy();
+        context.switchPlayer(next);
+
+        return new SwitchEventDTO(BattleSide.PLAYER, snapshot);
     }
 
-    public void finishBattleIfWon(BattleContext context, Trainer trainer){
-        applyReward(context, trainer);
-        pokedexService.getPokedexByOwner(trainer.getId())
-                .ifPresent(pokedex -> {
-                    pokedex.upLevelTeamByWin();
-                    pokedexService.update(pokedex);
-                });
+    private BattlePokemon findPokemon(BattleContext context, String pokemonId){
+        Optional<BattlePokemon> next = context.getPlayerTeam().stream().filter(p -> p.getPokemonId().equals(pokemonId)).findFirst();
+
+        if (next.isPresent()){
+            if (!next.get().isFainted()){
+                return next.get();
+            }
+            throw new DomainConflictException("Your pokemon already was defeat");
+        }
+
+        throw new ResourceNotFoundException("Pokemon is not in the team");
     }
 }
