@@ -19,6 +19,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Service responsible for deciding enemy actions during battle.
+ *
+ * <p>The AI evaluates the current battle state and selects the
+ * most appropriate action.</p>
+ *
+ * Possible decisions:
+ * - Attack using one of the available moves
+ * - Perform a strategic switch
+ *
+ * The decision may consider:
+ * - Pokémon HP
+ * - Type matchups
+ * - Move availability
+ */
 @Service
 public class EnemyAiDecisionService {
     private final SwitchDecisionPolicy switchPolicy;
@@ -49,7 +64,10 @@ public class EnemyAiDecisionService {
                 id -> new EnemyBattleState()
         );
 
+        state.onTurnPassed();
+
         if (enemy.isFainted()){
+            state.forceSwitch();
             return forceSwitch(context);
         }
 
