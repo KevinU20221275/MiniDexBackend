@@ -12,11 +12,14 @@ import org.kmontano.minidex.infrastructure.mapper.SpeciesResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 public class EvolutionServiceImpl implements EvolutionService {
     private final RestTemplate restTemplate;
+    private static final Random RANDOM = new Random();
 
     public EvolutionServiceImpl(RestTemplate restTemplate){
         this.restTemplate = restTemplate;
@@ -54,11 +57,14 @@ public class EvolutionServiceImpl implements EvolutionService {
         if (chain.getSpecies().getName().equals(currentName)){
             if (!chain.getEvolves_to().isEmpty()){
                 /**
-                 * Si existen múltiples evoluciones, se selecciona la primera por defecto.
+                 * if exist multiples evolutions, get one random evolution.
                  */
-                Species nextSpecies = chain.getEvolves_to().get(0).getSpecies();
+                List<ChainLink> evolutions = chain.getEvolves_to();
+                ChainLink selected = evolutions.get(RANDOM.nextInt(evolutions.size()));
 
+                Species nextSpecies = selected.getSpecies();
                 int id = extractIdFromUrl(nextSpecies.getUrl());
+
                 return Optional.of(
                         new NextEvolution(
                             chain.getEvolves_to().get(0).getSpecies().getName(),
@@ -66,17 +72,14 @@ public class EvolutionServiceImpl implements EvolutionService {
                         )
                 );
             }
-            return Optional.empty();
+            return Optional.empty(); // Pokemon found, but without evolution
         }
 
-        for (ChainLink next : chain.getEvolves_to()){
-            Optional<NextEvolution> found = findNextEvolution(next, currentName);
-            if (found.isPresent()){
-                return  found;
-            }
-        }
-
-        return Optional.empty();
+        return chain.getEvolves_to().stream()
+                .map(next -> findNextEvolution(next, currentName))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
     }
 
     private int extractIdFromUrl(String url) {
