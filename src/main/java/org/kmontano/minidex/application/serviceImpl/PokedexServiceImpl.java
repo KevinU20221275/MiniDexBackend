@@ -157,7 +157,7 @@ public class PokedexServiceImpl implements PokedexService {
         trainer.subtractCoins(EVOLUTION_COST);
         trainer.addXp(EVOLUTION_COST);
 
-        if (pokemonToEvol.getNextEvolution() == null) throw new DomainConflictException("Pokemon can't evolve");
+        if (!pokemonToEvol.canEvolve()) throw new DomainConflictException("Pokemon can't evolve");
 
         PokemonResponse evolvedResponse = pokemonApiClient.getPokemonByName(pokemonToEvol.getNextEvolution().getName());
 
