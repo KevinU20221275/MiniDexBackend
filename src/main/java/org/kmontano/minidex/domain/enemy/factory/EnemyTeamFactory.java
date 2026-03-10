@@ -31,6 +31,9 @@ public class EnemyTeamFactory {
             int ramdomId = ThreadLocalRandom.current().nextInt(1, 251);
             PokemonResponse pr = pokemonApiClient.getPokemonById(ramdomId);
             Pokemon p = pokemonFactory.toFullPokemon(pr, true);
+            // generate random level between 1 - 30 to make enemy pokemon strongest
+            int randomLevel = ThreadLocalRandom.current().nextInt(1, 31);
+            p.setLevel(randomLevel);
             pokemons.add(p);
         }
 
