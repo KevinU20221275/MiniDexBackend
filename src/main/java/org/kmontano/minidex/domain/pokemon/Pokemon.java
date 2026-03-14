@@ -2,6 +2,7 @@ package org.kmontano.minidex.domain.pokemon;
 
 import lombok.Data;
 import org.kmontano.minidex.exception.DomainConflictException;
+import org.springframework.data.mongodb.core.index.Indexed;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,7 @@ public class Pokemon {
      */
     private String uuid;
 
+    @Indexed
     private Integer numPokedex;
     private String name;
     private Rarity rarity;
@@ -42,6 +44,7 @@ public class Pokemon {
     /**
      * Pokemon types (mapped to domain-specific objects).
      */
+    @Indexed
     private List<PokemonTypeRef> types;
     private List<Move> moves;
 
