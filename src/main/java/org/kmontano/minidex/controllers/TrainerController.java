@@ -53,10 +53,11 @@ public class TrainerController {
      * @return TrainerDTO
      */
     @GetMapping
-    public ResponseEntity<TrainerDTO> getTrainer(Authentication authentication) {
+    public ResponseEntity<TrainerProfileDTO> getTrainer(Authentication authentication) {
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
+        Pokedex pokedex = pokedexService.getPokedexByOwner(trainer.getId());
 
-        return ResponseEntity.ok(new TrainerDTO(trainer));
+        return ResponseEntity.ok(new TrainerProfileDTO(trainer, pokedex.getPokemons().size()));
     }
 
     /**
@@ -66,11 +67,19 @@ public class TrainerController {
      * @return PokedexDTO
      */
     @GetMapping("/pokedex")
-    public ResponseEntity<PokedexDTO> getPokedex(Authentication authentication){
+    public ResponseEntity<PokedexPageDTO> getPokedex(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Boolean shiny,
+            @RequestParam(required = false) Boolean orderByPokedex
+    ) {
         Trainer trainer = AuthUtils.getAuthenticatedTrainer(authentication);
-        Pokedex pokedex = pokedexService.getPokedexByOwner(trainer.getId());
 
-        return ResponseEntity.ok(new PokedexDTO(pokedex));
+        PokedexPageDTO pokedexPage = pokedexService.getFilteredPokedex(trainer.getId(), page, size, type, shiny, orderByPokedex);
+
+        return ResponseEntity.ok(pokedexPage);
     }
 
     /**
