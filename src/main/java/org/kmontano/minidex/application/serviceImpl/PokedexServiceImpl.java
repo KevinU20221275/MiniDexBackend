@@ -4,9 +4,7 @@ import org.kmontano.minidex.application.service.RewardService;
 import org.kmontano.minidex.domain.pokedex.Pokedex;
 import org.kmontano.minidex.domain.pokemon.Pokemon;
 import org.kmontano.minidex.domain.trainer.Trainer;
-import org.kmontano.minidex.dto.response.EvolutionPokemonResponse;
-import org.kmontano.minidex.dto.response.PackPokemon;
-import org.kmontano.minidex.dto.response.TransferPokemonResponse;
+import org.kmontano.minidex.dto.response.*;
 import org.kmontano.minidex.exception.DomainConflictException;
 import org.kmontano.minidex.exception.ResourceNotFoundException;
 import org.kmontano.minidex.factory.PokemonFactory;
@@ -15,11 +13,14 @@ import org.kmontano.minidex.infrastructure.repository.PokedexRepository;
 import org.kmontano.minidex.application.service.PokedexService;
 import org.kmontano.minidex.infrastructure.api.PokemonApiClient;
 import org.kmontano.minidex.infrastructure.repository.TrainerRepository;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * Implementation of {@link PokedexService}.
@@ -39,6 +40,7 @@ public class PokedexServiceImpl implements PokedexService {
     private final PokemonApiClient pokemonApiClient;
     private final TrainerRepository trainerRepository;
     private final RewardService rewardService;
+    private final MongoTemplate mongoTemplate;
 
     /**
      * Creates a new PokedexServiceImpl.
@@ -47,12 +49,13 @@ public class PokedexServiceImpl implements PokedexService {
      * @param pokemonFactory factory used to build Pokémon domain objects
      * @param pokemonApiClient client used to fetch Pokémon data from external API
      */
-    public PokedexServiceImpl(PokedexRepository repository, PokemonFactory pokemonFactory, PokemonApiClient pokemonApiClient, TrainerRepository trainerRepository, RewardService rewardService) {
+    public PokedexServiceImpl(PokedexRepository repository, PokemonFactory pokemonFactory, PokemonApiClient pokemonApiClient, TrainerRepository trainerRepository, RewardService rewardService, MongoTemplate mongoTemplate) {
         this.repository = repository;
         this.pokemonFactory = pokemonFactory;
         this.pokemonApiClient = pokemonApiClient;
         this.trainerRepository = trainerRepository;
         this.rewardService = rewardService;
+        this.mongoTemplate = mongoTemplate;
     }
 
     /**
@@ -65,6 +68,42 @@ public class PokedexServiceImpl implements PokedexService {
     public Pokedex getPokedexByOwner(String owner) {
         return repository.getPokedexByOwnerId(owner)
                 .orElseGet(() -> repository.save(new Pokedex(owner)));
+    }
+
+    @Override
+    public PokedexPageDTO getFilteredPokedex(String trainerId, int page, int size, String type, Boolean shiny, Boolean orderByPokedex) {
+        Pokedex pokedex = repository.getPokedexByOwnerId(trainerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainer's pokedex not found"));
+
+        List<Pokemon> pokemons = pokedex.getPokemons();
+
+        Stream<Pokemon> stream = pokemons.stream();
+
+        if (type != null && !type.equals("ALL")){
+            stream = stream.filter(p ->
+                    p.getTypes().stream()
+                            .anyMatch(t -> t.getName().equalsIgnoreCase(type))
+            );
+        }
+
+        if (Boolean.TRUE.equals(shiny)){
+            stream = stream.filter(Pokemon::getShiny);
+        }
+
+        if (Boolean.TRUE.equals(orderByPokedex)){
+            stream = stream.sorted(Comparator.comparingInt(Pokemon::getNumPokedex));
+        }
+
+        List<Pokemon> filtered = stream.toList();
+        int total = filtered.size();
+
+        List<PokemonDTO> pageContent = filtered.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .map(PokemonDTO::new)
+                .toList();
+
+        return new PokedexPageDTO(pageContent, page, (int) Math.ceil((double) total /size), total);
     }
 
     /**
